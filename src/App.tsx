@@ -171,9 +171,6 @@ useEffect(() => {
     return;
   }
 
-  // Jika meninggalkan halaman admin menuju halaman aplikasi lain,
-  // kembalikan URL ke root karena halaman lainnya masih memakai
-  // sistem navigasi currentView yang lama.
   if (
     currentPath === "/admin" ||
     currentPath.startsWith("/admin/")
@@ -181,23 +178,6 @@ useEffect(() => {
     window.history.pushState(null, "", "/");
   }
 }, [currentView]);
-
-    if (!isGuest && roleIsUnauthorized) {
-      if (userRole === "admin") {
-        setCurrentView("admin_dashboard");
-      } else if (userRole === "company") {
-        setCurrentView("candidate_profile");
-      } else {
-        setCurrentView("student_dashboard");
-      }
-    }
-  }, [
-    isGuest,
-    isProtectedView,
-    roleIsUnauthorized,
-    userRole,
-    setCurrentView,
-  ]);
 
   const renderPage = (): React.ReactNode => {
     // Jangan tampilkan halaman terproteksi ketika pengunjung
