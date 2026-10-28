@@ -11,6 +11,33 @@ export type UserRole = "student" | "company" | "admin" | "guest";
 export type Language = "id" | "en";
 export type ProjectStatus = "pending" | "approved" | "rejected";
 
+// Pemetaan URL browser ke halaman aplikasi.
+const PATH_TO_VIEW: Record<string, string> = {
+  "/": "landing",
+  "/admin": "login_admin",
+  "/admin/dashboard": "admin_dashboard",
+  "/admin/control": "admin_control",
+  "/admin/students": "students_directory",
+  "/admin/students/invite": "invite_student",
+  "/admin/companies": "partner_companies",
+};
+
+// Ubah URL menjadi nama halaman aplikasi.
+export function getViewFromPath(pathname: string): string {
+  const normalizedPath = pathname.replace(/\/+$/, "") || "/";
+
+  return PATH_TO_VIEW[normalizedPath] ?? "landing";
+}
+
+// Ubah nama halaman aplikasi menjadi URL.
+export function getPathFromView(view: string): string | null {
+  const route = Object.entries(PATH_TO_VIEW).find(
+    ([, mappedView]) => mappedView === view
+  );
+
+  return route?.[0] ?? null;
+}
+
 export interface CurrentUser {
   id: string;
   name: string;
@@ -281,7 +308,11 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
-  const [currentView, setCurrentView] = useState("landing");
+  const [currentView, setCurrentView] = useState<string>(() =>
+  getViewFromPath(
+    typeof window !== "undefined" ? window.location.pathname : "/"
+  )
+);
   const [userRole, setUserRole] = useState<UserRole>("guest");
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [language, setLanguage] = useState<Language>("id");
@@ -616,7 +647,7 @@ export function useApp(): AppContextType {
 
   if (!context) {
     throw new Error(
-      "useApp harus digunakan di dalam komponen AppProvider."
+      "useApp harus digunakan di dalam komponen ."
     );
   }
 
