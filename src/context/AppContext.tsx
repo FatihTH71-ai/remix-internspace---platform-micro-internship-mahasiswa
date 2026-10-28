@@ -51,6 +51,28 @@ export interface CurrentUser {
   portfolioUrl?: string;
 }
 
+export interface Company {
+  id: string;
+  name: string;
+  industry: string;
+  logo: string;
+  verified: boolean;
+  activeProjects: number;
+  totalHired: number;
+  rating: number;
+}
+
+export interface Student {
+  id: string;
+  name: string;
+  email: string;
+  university: string;
+  major: string;
+  status: "Active" | "In Review" | "Suspended";
+  avatar: string;
+  registeredDate: string;
+}
+
 export interface Project {
   id: string;
   title: string;
@@ -170,6 +192,14 @@ interface AppContextType {
   setCurrentUser: React.Dispatch<
     React.SetStateAction<CurrentUser | null>
   >;
+  companies: Company[];
+students: Student[];
+inviteStudent: (
+  name: string,
+  email: string,
+  university: string
+) => void;
+completePayment: () => void;
   language: Language;
   setLanguage: React.Dispatch<React.SetStateAction<Language>>;
   projects: Project[];
