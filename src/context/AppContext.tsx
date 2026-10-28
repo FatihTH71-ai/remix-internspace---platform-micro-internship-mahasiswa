@@ -587,6 +587,33 @@ export const AppProvider: React.FC<{
     [currentUser]
   );
 
+  const [companies, setCompanies] = useState<Company[]>([]);
+const [students, setStudents] = useState<Student[]>([]);
+
+const inviteStudent = useCallback(
+  (name: string, email: string, university: string) => {
+    const student: Student = {
+      id: `student-${Date.now()}`,
+      name: name.trim(),
+      email: email.trim(),
+      university: university.trim(),
+      major: "Belum ditentukan",
+      status: "In Review",
+      avatar: "https://placehold.co/64x64?text=ST",
+      registeredDate: new Date().toISOString().slice(0, 10),
+    };
+
+    setStudents((previous) => [...previous, student]);
+  },
+  []
+);
+
+const completePayment = useCallback(() => {
+  // Demo aplikasi: konfirmasi pembayaran mengarahkan ke halaman sukses.
+  // Integrasi pembayaran nyata tetap memerlukan verifikasi dari server.
+  setCurrentView("payment_success");
+}, []);
+
   const getMyApplications = useCallback(() => {
     if (!currentUser) return [];
 
@@ -635,6 +662,10 @@ export const AppProvider: React.FC<{
       clearAlerts,
       getSkillMatch,
       getMyApplications,
+      companies,
+      students,
+      inviteStudent,
+      completePayment,
     }),
     [
       currentView,
@@ -662,6 +693,10 @@ export const AppProvider: React.FC<{
       clearAlerts,
       getSkillMatch,
       getMyApplications,
+      companies,
+      students,
+      inviteStudent,
+      completePayment,
     ]
   );
 
