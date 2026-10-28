@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 
@@ -96,9 +95,32 @@ const AppContent: React.FC = () => {
         ...COMPANY_VIEWS,
       ].includes(currentView));
 
+  // 1. Dengar pathname URL saat pertama kali dimuat (misal user mengetik localhost:3000/admin)
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === "/admin") {
+      setCurrentView("admin_dashboard");
+    }
+  }, [setCurrentView]);
+
+  // 2. Kunci dan Sinkronkan URL browser sesuai dengan currentView aktif
+  useEffect(() => {
+    if (ADMIN_VIEWS.includes(currentView)) {
+      window.history.replaceState(null, "", "/admin");
+    } else if (currentView === "login_admin") {
+      window.history.replaceState(null, "", "/admin/login");
+    }
+  }, [currentView]);
+
+  // 3. Evaluasi Proteksi Akses & Redirect
   useEffect(() => {
     if (isGuest && isProtectedView) {
-      setCurrentView("login");
+      // Jika pengunjung mencoba mengakses halaman admin, arahkan ke login_admin
+      if (ADMIN_VIEWS.includes(currentView)) {
+        setCurrentView("login_admin");
+      } else {
+        setCurrentView("login");
+      }
       return;
     }
 
@@ -116,17 +138,20 @@ const AppContent: React.FC = () => {
     isProtectedView,
     roleIsUnauthorized,
     userRole,
+    currentView,
     setCurrentView,
   ]);
 
   const renderPage = (): React.ReactNode => {
-    // Jangan tampilkan halaman terproteksi ketika pengunjung
-    // belum login, termasuk sebelum useEffect melakukan redirect.
+    // Tampilkan halaman login admin khusus jika view-nya login_admin atau guest mencoba masuk admin
+    if (isGuest && ADMIN_VIEWS.includes(currentView)) {
+      return <LoginAdminPage />;
+    }
+
     if (isGuest && isProtectedView) {
       return <AuthPage initialTab="student" />;
     }
 
-    // Halaman yang tidak sesuai role tidak dirender.
     if (!isGuest && roleIsUnauthorized) {
       return <LandingPage />;
     }
