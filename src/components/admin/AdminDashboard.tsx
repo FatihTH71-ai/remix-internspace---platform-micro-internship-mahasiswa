@@ -97,6 +97,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
     notify(`Company verified: ${company.name}`, 'success');
   };
 
+  const handleSignOut = () => {
+    logout();
+    setCurrentView('login_admin');
+  };
+
   return (
     <div className="fixed inset-0 z-[60] overflow-auto bg-[#f9f9fc] font-['League_Spartan',sans-serif] text-[#1a1c1e]">
       <header className="fixed inset-x-0 top-0 z-30 flex h-20 items-center justify-between border-b border-[rgba(192,199,211,0.1)] bg-[rgba(248,249,250,0.8)] px-6 backdrop-blur-md sm:px-10">
@@ -130,7 +135,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
             })}
           </nav>
         </div>
-        <button type="button" onClick={logout} className="flex items-center gap-3 px-4 py-3 text-xs tracking-[0.05em] text-[#ba1a1a]">
+        <button type="button" onClick={handleSignOut} className="flex items-center gap-3 px-4 py-3 text-xs tracking-[0.05em] text-[#ba1a1a]">
           <img src={signOutIcon} alt="" className="h-[18px] w-[18px]" />
           Sign Out
         </button>
