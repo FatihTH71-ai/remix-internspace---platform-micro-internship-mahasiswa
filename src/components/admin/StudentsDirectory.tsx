@@ -1,281 +1,254 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import {
-  Search,
-  UserPlus,
-  Download,
-  Filter,
-  CheckCircle2,
-  Clock,
-  Ban,
-  X,
-  GraduationCap,
-  Mail,
-  Building
-} from 'lucide-react';
+
+import alexChenAvatar from '../../assets/figma-students/alex-chen.jpeg';
+import samanthaMillerAvatar from '../../assets/figma-students/samantha-miller.jpeg';
+import davidKimAvatar from '../../assets/figma-students/david-kim.jpeg';
+import alexRiveraAvatar from '../../assets/figma-students/alex-rivera.jpeg';
+import exportIcon from '../../assets/figma-students/previous.svg';
+import inviteIcon from '../../assets/figma-students/invite.svg';
+import previousIcon from '../../assets/figma-students/bell.svg';
+import nextIcon from '../../assets/figma-students/more.svg';
+import bellIcon from '../../assets/figma-students/overview.svg';
+import overviewIcon from '../../assets/figma-students/next.svg';
+import validationsIcon from '../../assets/figma-students/students.svg';
+import studentsIcon from '../../assets/figma-students/export.svg';
+import companiesIcon from '../../assets/figma-students/sign-out.svg';
+import signOutIcon from '../../assets/figma-students/companies.svg';
 
 interface StudentsDirectoryProps {
   showInviteModalInitially?: boolean;
 }
 
+type DirectoryStudent = {
+  name: string;
+  email: string;
+  university: string;
+  status: 'VERIFIED' | 'PENDING' | 'FLAGGED';
+  joined: string;
+  avatar?: string;
+};
+
+const directoryStudents: DirectoryStudent[] = [
+  {
+    name: 'Alex Chen',
+    email: 'alex.chen@student.edu',
+    university: 'Stanford University',
+    status: 'VERIFIED',
+    joined: 'Oct 12, 2023',
+    avatar: alexChenAvatar,
+  },
+  {
+    name: 'Samantha Miller',
+    email: 's.miller@state.edu',
+    university: 'State University',
+    status: 'PENDING',
+    joined: 'Oct 14, 2023',
+    avatar: samanthaMillerAvatar,
+  },
+  {
+    name: 'David Kim',
+    email: 'dkim99@tech.edu',
+    university: 'Tech Institute',
+    status: 'VERIFIED',
+    joined: 'Oct 15, 2023',
+    avatar: davidKimAvatar,
+  },
+  {
+    name: 'Elena Jones',
+    email: 'ejones@arts.edu',
+    university: 'College of Arts',
+    status: 'FLAGGED',
+    joined: 'Oct 16, 2023',
+  },
+];
+
+const navItems = [
+  { label: 'Overview', view: 'admin_dashboard', icon: overviewIcon },
+  { label: 'Validations', view: 'admin_control', icon: validationsIcon },
+  { label: 'Students', view: 'students_directory', icon: studentsIcon },
+  { label: 'Companies', view: 'partner_companies', icon: companiesIcon },
+];
+
+const statusStyles: Record<DirectoryStudent['status'], string> = {
+  VERIFIED: 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]',
+  PENDING: 'border-[#c0c7d3] bg-[#e8e8ea] text-[#404751]',
+  FLAGGED: 'border-[#ffdad6] bg-[rgba(255,218,214,0.5)] text-[#ba1a1a]',
+};
+
 export const StudentsDirectory: React.FC<StudentsDirectoryProps> = ({
-  showInviteModalInitially = false
+  showInviteModalInitially = false,
 }) => {
-  const { students, inviteStudent, setCurrentView } = useApp();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'In Review' | 'Suspended'>('All');
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(showInviteModalInitially);
+  const { setCurrentView, logout } = useApp();
+  const [isInviteOpen, setIsInviteOpen] = useState(showInviteModalInitially);
+  const [activePage, setActivePage] = useState(1);
+  const [inviteName, setInviteName] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
 
-  // Invite Student Form state (Gambar 4.27)
-  const [inviteName, setInviteName] = useState('Fatih Alfaluza');
-  const [inviteEmail, setInviteEmail] = useState('fatih@email.com');
-  const [inviteUniversity, setInviteUniversity] = useState('Universitas Logistik dan Bisnis Internasional');
-
-  const filteredStudents = students.filter(s => {
-    const matchSearch =
-      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.university.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchStatus = statusFilter === 'All' || s.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
-
-  const handleInviteSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inviteName || !inviteEmail) return;
-    inviteStudent(inviteName, inviteEmail, inviteUniversity);
-    setIsInviteModalOpen(false);
-    alert(`Undangan berhasil dikirim ke ${inviteEmail}`);
+  const handleExport = () => {
+    const csv = [
+      'Name,Email,University,Status,Join Date',
+      ...directoryStudents.map((student) =>
+        [student.name, student.email, student.university, student.status, student.joined]
+          .map((value) => `"${value}"`)
+          .join(','),
+      ),
+    ].join('\n');
+    const link = document.createElement('a');
+    link.href = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
+    link.download = 'InternSpace_Students_Directory.csv';
+    link.click();
   };
 
-  const handleExportData = () => {
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      'Name,Email,University,Major,Status\n' +
-      students.map(s => `"${s.name}","${s.email}","${s.university}","${s.major}","${s.status}"`).join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'InternSpace_Students_Directory_ULBI.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleInvite = (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsInviteOpen(false);
+    setInviteName('');
+    setInviteEmail('');
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        
-        {/* Header matching Gambar 4.26 */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">
-              Gambar 4.26 · Direktori Mahasiswa
-            </span>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Students Directory</h1>
-            <p className="text-xs text-slate-500">
-              Manage and verify registered student accounts across university partners.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleExportData}
-              className="px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Export Data</span>
-            </button>
-            <button
-              onClick={() => setIsInviteModalOpen(true)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs flex items-center gap-1.5"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>+ Invite Student</span>
-            </button>
+    <div className="fixed inset-0 z-[60] overflow-auto bg-[#f9f9fc] font-['League_Spartan',sans-serif] text-[#1a1c1e]">
+      <header className="fixed inset-x-0 top-0 z-30 flex h-20 items-center justify-between bg-[rgba(249,249,252,0.8)] px-6 backdrop-blur-md sm:px-10">
+        <div className="flex items-center gap-4">
+          <button type="button" onClick={() => setCurrentView('admin_dashboard')} className="text-[36px] font-bold leading-none tracking-[-0.02em] text-[#005f9f]">
+            internspace
+          </button>
+          <span className="rounded-full bg-[#0078c7] px-3 py-1 text-[10px] uppercase tracking-[0.05em] text-white">Admin</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <button type="button" aria-label="Notifications" className="grid h-10 w-10 place-items-center rounded-full bg-[#eeeef0]">
+            <img src={bellIcon} alt="" className="h-5 w-4" />
+          </button>
+          <div className="flex items-center gap-3 border-l border-[#c0c7d3] pl-4">
+            <div className="text-right">
+              <p className="text-sm leading-5">Alex Rivera</p>
+              <p className="text-[10px] uppercase leading-4 text-[#707882]">Super Admin</p>
+            </div>
+            <img src={alexRiveraAvatar} alt="Alex Rivera" className="h-10 w-10 rounded-full border-2 border-[#d1e4ff] object-cover" />
           </div>
         </div>
+      </header>
 
-        {/* Filter bar */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search by student or university..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+      <aside className="fixed bottom-0 left-0 top-20 z-20 flex w-64 flex-col justify-between bg-[#f3f3f6] px-4 py-8 max-[1100px]:w-[204px]">
+        <div>
+          <p className="px-4 text-xs uppercase tracking-[0.05em] text-[#707882]">Main Menu</p>
+          <nav className="mt-8 space-y-2">
+            {navItems.map((item) => {
+              const isActive = item.view === 'students_directory';
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => setCurrentView(item.view)}
+                  className={`flex w-full items-center gap-3 rounded-full px-4 py-3 text-left text-xs font-bold tracking-[0.05em] ${
+                    isActive ? 'bg-[#0078c7] text-white' : 'text-[#404751] hover:bg-[#e4e6eb]'
+                  }`}
+                >
+                  <img src={item.icon} alt="" className="max-h-5 max-w-[22px]" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+        <button type="button" onClick={logout} className="flex items-center gap-3 px-4 py-3 text-xs tracking-[0.05em] text-[#ba1a1a]">
+          <img src={signOutIcon} alt="" className="h-[18px] w-[18px]" />
+          Sign Out
+        </button>
+      </aside>
 
-          <div className="flex items-center gap-1 text-xs">
-            {(['All', 'Active', 'In Review', 'Suspended'] as const).map(st => (
-              <button
-                key={st}
-                onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition-colors ${
-                  statusFilter === st
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {st}
+      <main className="ml-64 min-h-full px-6 pb-12 pt-28 sm:px-10 max-[1100px]:ml-[204px] max-[1100px]:px-8">
+        <div className="mx-auto flex max-w-[1280px] flex-col gap-10">
+          <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
+            <div>
+              <h1 className="whitespace-nowrap text-[32px] font-semibold leading-[1.4] tracking-[-0.01em]">Students Directory</h1>
+              <p className="whitespace-nowrap text-base leading-[1.6] text-[#404751]">Manage and verify registered student accounts.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={handleExport} className="flex items-center gap-2 rounded-full border border-[#005f9f] px-6 py-2 text-sm text-[#005f9f]">
+                <img src={exportIcon} alt="" className="h-3 w-3" />
+                Export Data
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Students Table matching Gambar 4.26 */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="py-3.5 px-6">Mahasiswa</th>
-                  <th className="py-3.5 px-6">Universitas & Program Studi</th>
-                  <th className="py-3.5 px-6">Status Akun</th>
-                  <th className="py-3.5 px-6">Tanggal Terdaftar</th>
-                  <th className="py-3.5 px-6 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredStudents.map(student => (
-                  <tr key={student.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={student.avatar}
-                          alt={student.name}
-                          className="w-9 h-9 rounded-full object-cover border border-slate-200"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div>
-                          <p className="font-bold text-slate-900">{student.name}</p>
-                          <p className="text-[11px] text-slate-400">{student.email}</p>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="py-4 px-6 text-slate-700">
-                      <p className="font-semibold text-slate-800">{student.university}</p>
-                      <p className="text-[11px] text-slate-500">{student.major}</p>
-                    </td>
-
-                    <td className="py-4 px-6">
-                      <span
-                        className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                          student.status === 'Active'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : student.status === 'In Review'
-                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                            : 'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}
-                      >
-                        {student.status === 'Active' && <CheckCircle2 className="w-3 h-3" />}
-                        {student.status === 'In Review' && <Clock className="w-3 h-3" />}
-                        {student.status === 'Suspended' && <Ban className="w-3 h-3" />}
-                        <span>{student.status}</span>
-                      </span>
-                    </td>
-
-                    <td className="py-4 px-6 text-slate-500 tabular-nums">
-                      {student.registeredDate}
-                    </td>
-
-                    <td className="py-4 px-6 text-right">
-                      <button
-                        onClick={() => alert(`Detail akun ${student.name} dibuka`)}
-                        className="text-blue-600 hover:text-blue-800 font-bold hover:underline"
-                      >
-                        Kelola
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-      </div>
-
-      {/* GAMBAR 4.27: Halaman / Modal Invite Student */}
-      {isInviteModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-6 sm:p-8 border border-slate-100 relative animate-in fade-in zoom-in-95 duration-200">
-            
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div>
-                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">
-                  Gambar 4.27 · Undangan Mahasiswa
-                </span>
-                <h3 className="text-lg font-bold text-slate-900">Invite Student</h3>
-              </div>
-              <button
-                onClick={() => setIsInviteModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-4 h-4" />
+              <button type="button" onClick={() => setIsInviteOpen(true)} className="flex items-center gap-2 rounded-full bg-[#005f9f] px-6 py-3 text-sm text-white">
+                <img src={inviteIcon} alt="" className="h-[11px] w-[11px]" />
+                Invite Student
               </button>
             </div>
+          </div>
 
-            <form onSubmit={handleInviteSubmit} className="space-y-4 pt-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Fatih Alfaluza"
-                  value={inviteName}
-                  onChange={e => setInviteName(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">E-mail</label>
-                <input
-                  type="email"
-                  placeholder="e.g. fatih@email.com"
-                  value={inviteEmail}
-                  onChange={e => setInviteEmail(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">University</label>
-                <select
-                  value={inviteUniversity}
-                  onChange={e => setInviteUniversity(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="Universitas Logistik dan Bisnis Internasional">
-                    Universitas Logistik dan Bisnis Internasional (ULBI)
-                  </option>
-                  <option value="Institut Teknologi Bandung">Institut Teknologi Bandung (ITB)</option>
-                  <option value="Universitas Padjadjaran">Universitas Padjadjaran (UNPAD)</option>
-                  <option value="Universitas Indonesia">Universitas Indonesia (UI)</option>
-                  <option value="Universitas Gadjah Mada">Universitas Gadjah Mada (UGM)</option>
-                </select>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition-colors flex items-center justify-center gap-1.5"
-                >
-                  <span>Invite Student</span>
+          <section className="overflow-hidden rounded-[32px] border border-[rgba(192,199,211,0.3)] bg-white shadow-sm">
+            <div className="grid grid-cols-12 gap-4 border-b border-[rgba(192,199,211,0.2)] bg-[#f3f3f6] px-6 py-4 text-xs uppercase tracking-[0.05em] text-[#707882]">
+              <span className="col-span-4">Name</span>
+              <span className="col-span-3">University</span>
+              <span className="col-span-2 text-center">Status</span>
+              <span className="col-span-3 text-right">Join Date</span>
+            </div>
+            <div>
+              {directoryStudents.map((student, index) => (
+                <div key={student.name} className={`grid grid-cols-12 items-center gap-4 px-6 py-5 ${index > 0 ? 'border-t border-[rgba(192,199,211,0.2)]' : ''}`}>
+                  <div className="col-span-4 flex min-w-0 items-center gap-4">
+                    {student.avatar ? (
+                      <img src={student.avatar} alt={student.name} className="h-10 w-10 shrink-0 rounded-full border-2 border-[#d1e4ff] object-cover" />
+                    ) : (
+                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-[rgba(186,26,26,0.2)] bg-[#ffdad6] text-lg text-[#93000a]">EJ</div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate text-base leading-[1.6]">{student.name}</p>
+                      <p className="truncate text-sm leading-[1.6] text-[#707882]">{student.email}</p>
+                    </div>
+                  </div>
+                  <p className="col-span-3 text-sm text-[#404751]">{student.university}</p>
+                  <div className="col-span-2 flex justify-center">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.05em] ${statusStyles[student.status]}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${student.status === 'VERIFIED' ? 'bg-[#16a34a]' : student.status === 'PENDING' ? 'bg-[#707882]' : 'bg-[#ba1a1a]'}`} />
+                      {student.status}
+                    </span>
+                  </div>
+                  <p className="col-span-3 text-right text-sm text-[#707882]">{student.joined}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between border-t border-[rgba(192,199,211,0.2)] bg-[#f3f3f6] px-6 py-4">
+              <p className="text-sm text-[#707882]">Showing 1 to 4 of 248 entries</p>
+              <div className="flex items-center gap-2">
+                <button type="button" aria-label="Previous page" disabled={activePage === 1} onClick={() => setActivePage((page) => Math.max(1, page - 1))} className="grid h-8 w-8 place-items-center rounded-full border border-[#707882] disabled:opacity-50">
+                  <img src={previousIcon} alt="" className="h-[9px] w-[6px]" />
+                </button>
+                {[1, 2, 3].map((page) => (
+                  <button key={page} type="button" onClick={() => setActivePage(page)} className={`grid h-8 w-8 place-items-center rounded-full border border-[#707882] text-sm ${activePage === page ? 'border-[#005f9f] bg-[#005f9f] text-white' : 'text-[#1a1c1e]'}`}>
+                    {page}
+                  </button>
+                ))}
+                <span className="px-1 text-base text-[#707882]">...</span>
+                <button type="button" onClick={() => setActivePage(10)} className={`grid h-8 w-8 place-items-center rounded-full border border-[#707882] text-sm ${activePage === 10 ? 'border-[#005f9f] bg-[#005f9f] text-white' : ''}`}>10</button>
+                <button type="button" aria-label="Next page" onClick={() => setActivePage((page) => Math.min(10, page + 1))} className="grid h-8 w-8 place-items-center rounded-full border border-[#707882]">
+                  <img src={nextIcon} alt="" className="h-[9px] w-[6px]" />
                 </button>
               </div>
-            </form>
+            </div>
+          </section>
+        </div>
+      </main>
 
-          </div>
+      {isInviteOpen && (
+        <div className="fixed inset-0 z-40 grid place-items-center bg-[#1a1c1e]/40 p-4 backdrop-blur-sm">
+          <form onSubmit={handleInvite} className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.05em] text-[#005f9f]">Student invitation</p>
+                <h2 className="mt-1 text-2xl font-semibold">Invite Student</h2>
+              </div>
+              <button type="button" onClick={() => setIsInviteOpen(false)} className="text-2xl text-[#707882]" aria-label="Close invite dialog">×</button>
+            </div>
+            <div className="mt-6 space-y-4">
+              <label className="block text-sm">Name<input required value={inviteName} onChange={(event) => setInviteName(event.target.value)} className="mt-1 w-full rounded-xl border border-[#c0c7d3] px-3 py-2 outline-none focus:border-[#005f9f]" /></label>
+              <label className="block text-sm">E-mail<input required type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} className="mt-1 w-full rounded-xl border border-[#c0c7d3] px-3 py-2 outline-none focus:border-[#005f9f]" /></label>
+            </div>
+            <button type="submit" className="mt-6 w-full rounded-full bg-[#005f9f] py-3 text-sm text-white">Invite Student</button>
+          </form>
         </div>
       )}
-
     </div>
   );
 };
