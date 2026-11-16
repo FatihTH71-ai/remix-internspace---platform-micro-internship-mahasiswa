@@ -183,7 +183,7 @@
 .landing-hero h1 {
   color: #2a313d;
   font-size: clamp(36px, 4vw, 56px);
-  font-weight: 800;
+  font-weight: 600;
   line-height: 0.98;
   margin: 0;
 }
