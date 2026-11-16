@@ -198,6 +198,8 @@ const VIEW_PATHS: Record<string, string> = {
   system_alert: "/system-alert",
 };
 
+const ADMIN_SESSION_STORAGE_KEY = "internspace_admin_session";
+
 export function getPathFromView(view: string): string {
   return VIEW_PATHS[view] ?? "/";
 }
@@ -277,11 +279,31 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const [persistedAdmin] = useState<CurrentUser | null>(() => {
+    const storedSession = window.localStorage.getItem(
+      ADMIN_SESSION_STORAGE_KEY
+    );
+
+    if (!storedSession) return null;
+
+    try {
+      const user = JSON.parse(storedSession) as CurrentUser;
+      return user.role === "admin" ? user : null;
+    } catch {
+      window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
+      return null;
+    }
+  });
   const [currentView, setCurrentView] = useState(() =>
-    getViewFromPath(window.location.pathname)
+    persistedAdmin && getViewFromPath(window.location.pathname) === "login_admin"
+      ? "admin_dashboard"
+      : getViewFromPath(window.location.pathname)
   );
-  const [userRole, setUserRole] = useState<UserRole>("guest");
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [userRole, setUserRole] = useState<UserRole>(
+    persistedAdmin?.role ?? "guest"
+  );
+  const [currentUser, setCurrentUser] =
+    useState<CurrentUser | null>(persistedAdmin);
 
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -301,15 +323,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setUserRole(user.role);
 
     if (user.role === "admin") {
+      window.localStorage.setItem(
+        ADMIN_SESSION_STORAGE_KEY,
+        JSON.stringify(user)
+      );
       setCurrentView("admin_dashboard");
     } else if (user.role === "company") {
+      window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
       setCurrentView("company_dashboard");
     } else {
+      window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
       setCurrentView("student_dashboard");
     }
   }, []);
 
   const logout = useCallback(() => {
+    window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
     setCurrentUser(null);
     setUserRole("guest");
     setIsChatOpen(false);
