@@ -72,41 +72,8 @@ export const Footer: React.FC = () => {
                 </button>
               </li>
               <li>
-                <button onClick={() => setCurrentView('partner_companies')} className="hover:text-blue-600 transition-colors">
-                  Direktori Mitra Industri
-                </button>
-              </li>
-              <li>
                 <button onClick={() => setCurrentView('premium')} className="hover:text-blue-600 transition-colors">
                   Featured Project & Iklan
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">
-              Sistem & Admin
-            </h4>
-            <ul className="space-y-2 text-xs text-slate-600">
-              <li>
-                <button onClick={() => setCurrentView('admin_dashboard')} className="hover:text-blue-600 transition-colors">
-                  Admin Dashboard
-                </button>
-              </li>
-              <li>
-                <button onClick={() => setCurrentView('admin_control')} className="hover:text-blue-600 transition-colors">
-                  Validasi Proyek
-                </button>
-              </li>
-              <li>
-                <button onClick={() => setCurrentView('students_directory')} className="hover:text-blue-600 transition-colors">
-                  Database Mahasiswa
-                </button>
-              </li>
-              <li>
-                <button onClick={() => setCurrentView('system_alert')} className="hover:text-blue-600 transition-colors">
-                  System Alerts
                 </button>
               </li>
             </ul>

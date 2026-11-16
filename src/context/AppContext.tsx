@@ -172,7 +172,7 @@ const VIEW_PATHS: Record<string, string> = {
   login: "/login",
   login_student: "/login/student",
   login_company: "/login/company",
-  login_admin: "/login/admin",
+  login_admin: "/admin",
   student_dashboard: "/student/dashboard",
   projects_list: "/projects",
   projects_ad: "/projects/ad",
@@ -277,7 +277,9 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [currentView, setCurrentView] = useState("landing");
+  const [currentView, setCurrentView] = useState(() =>
+    getViewFromPath(window.location.pathname)
+  );
   const [userRole, setUserRole] = useState<UserRole>("guest");
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 

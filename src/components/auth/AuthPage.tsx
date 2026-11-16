@@ -6,7 +6,6 @@ import {
   Eye,
   EyeOff,
   Globe,
-  ShieldCheck,
   Sparkles,
   CheckCircle2,
   LoaderCircle,
@@ -96,7 +95,6 @@ const AuthPage: React.FC<AuthPageProps> = ({
     feature3: isId
       ? "Hubungkan pendidikan dengan dunia kerja"
       : "Connect education with the world of work",
-    admin: isId ? "Login administrator" : "Administrator login",
     showPassword: isId
       ? "Tampilkan kata sandi"
       : "Show password",
@@ -271,15 +269,6 @@ const AuthPage: React.FC<AuthPageProps> = ({
                 </select>
               </div>
 
-              <button
-                type="button"
-                title={content.admin}
-                aria-label={content.admin}
-                onClick={() => setCurrentView("login_admin")}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-              >
-                <ShieldCheck size={19} />
-              </button>
             </div>
           </div>
 
