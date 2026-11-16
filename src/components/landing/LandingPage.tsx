@@ -1,455 +1,290 @@
-
-import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import React, { FormEvent, useState } from "react";
 import {
+  ChevronDown,
+  CircleHelp,
+  CircleUserRound,
   Search,
-  Briefcase,
-  Clock,
-  Sparkles,
-  ArrowRight,
-  CheckCircle2,
-  Building,
-  GraduationCap,
-  Award,
-  Star,
-  Users,
-  Compass
-} from 'lucide-react';
+} from "lucide-react";
+import { useApp } from "../../context/AppContext";
+
+import heroImage from "../../assets/landing/asset-13.png";
+import internspaceLogo from "../../assets/landing/internspace-logo.svg";
+import panelImageOne from "../../assets/landing/raw-03.jpeg";
+import panelImageTwo from "../../assets/landing/raw-07.jpeg";
+import studentAvatar from "../../assets/landing/raw-02.jpeg";
+import companyAvatar from "../../assets/landing/raw-04.jpeg";
+import categoryDesign from "../../assets/landing/asset-18.svg";
+import categoryTech from "../../assets/landing/asset-19.svg";
+import categoryMarketing from "../../assets/landing/asset-20.svg";
+import categoryEngineering from "../../assets/landing/asset-21.svg";
+import categoryArrow from "../../assets/landing/asset-22.svg";
+import quoteIcon from "../../assets/landing/asset-23.svg";
+import verifiedIcon from "../../assets/landing/asset-24.svg";
+import mentorshipIcon from "../../assets/landing/asset-25.svg";
+import paymentIcon from "../../assets/landing/asset-26.svg";
+import socialIconOne from "../../assets/landing/asset-27.svg";
+import socialIconTwo from "../../assets/landing/asset-28.svg";
+import socialIconThree from "../../assets/landing/asset-29.svg";
+
+const categories = [
+  { title: "Design", detail: "UI/UX, Branding, Visual", icon: categoryDesign },
+  { title: "Tech", detail: "Web, App, Data Science", icon: categoryTech },
+  { title: "Marketing", detail: "SEO, Social Media, Ads", icon: categoryMarketing },
+  { title: "Engineering", detail: "Civil, Mechanical, IoT", icon: categoryEngineering },
+];
+
+const workflow = [
+  {
+    label: "for students",
+    title: "Build professional profile",
+    detail: "Make your skills and academic passion stand out to the professional world.",
+  },
+  {
+    label: "for students",
+    title: "Work & Get",
+    detail: "Finish and clear the tasks, build your portfolio, and get professional experience.",
+  },
+  {
+    label: "for companies",
+    title: "Post your project",
+    detail: "Identify specific project tasks that is need of fresh young talents.",
+  },
+  {
+    label: "for companies",
+    title: "Finish your work",
+    detail: "Obtain the quality results while realizing future talents.",
+  },
+  {
+    label: "for students",
+    title: "Choosing a micro-internship project",
+    detail: "Find your suitable short-term, micro-internship project (4–6 weeks).",
+  },
+  {
+    label: "for companies",
+    title: "Automated candidate review",
+    detail: "Our system will your projects with the skillful student.",
+  },
+];
+
+const benefits = [
+  {
+    title: "Verified Companies",
+    detail: "We partner only with verified, reputable organizations to ensure safe and valuable internship experiences.",
+    icon: verifiedIcon,
+  },
+  {
+    title: "Mentorship Integration",
+    detail: "Every project comes with direct mentorship from industry professionals to guide your learning process.",
+    icon: mentorshipIcon,
+  },
+  {
+    title: "Fast-Track Payments",
+    detail: "Enjoy secure, automated payments released quickly upon successful completion of your micro-internships.",
+    icon: paymentIcon,
+  },
+];
 
 export const LandingPage: React.FC = () => {
-  const {
-    projects,
-    setCurrentView,
-    setSelectedProjectId,
-    userRole
-  } = useApp();
+  const { setCurrentView } = useApp();
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const [activeCategory, setActiveCategory] = useState<string>('All');
-  const [searchTerm, setSearchTerm] = useState('');
-
-  const categories = [
-    'All',
-    'Tech & Programming',
-    'Graphic & Design',
-    'Video & Animation',
-    'Digital Marketing',
-    'Engineering'
-  ];
-
-  const filteredProjects = projects.filter(p => {
-    const matchCategory =
-      activeCategory === 'All' || p.category === activeCategory;
-
-    const matchSearch =
-      p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.company.toLowerCase().includes(searchTerm.toLowerCase());
-
-    return matchCategory && matchSearch;
-  });
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCurrentView("projects_list");
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-b from-sky-400 via-sky-300 to-sky-100/60 pt-12 sm:pt-16 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-8 border-b border-sky-200">
-        <div className="max-w-5xl mx-auto text-center space-y-6">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight drop-shadow-sm">
-            Start & earn <br />
-            <span className="text-blue-900">
-              real-work experience here
-            </span>
-          </h1>
+    <div className="landing-page min-h-screen bg-white text-[#1a1c1e]">
+      <header className="landing-nav">
+        <button className="landing-logo" onClick={() => setCurrentView("landing")} type="button">
+          <img alt="internspace" className="landing-logo-image" src={internspaceLogo} />
+        </button>
 
-          <p className="text-sm sm:text-base text-blue-950 font-medium max-w-2xl mx-auto">
-            Find your micro-internship projects to improve work environment
-            exposure, build a validated digital portfolio, and accelerate
-            your career.
-          </p>
+        <button className="landing-explore" type="button">
+          Explore
+          <ChevronDown size={18} />
+        </button>
 
-          {/* Search Box */}
-          <form
-            onSubmit={e => {
-              e.preventDefault();
-              setCurrentView('projects_list');
-            }}
-            className="max-w-2xl mx-auto bg-white p-2 rounded-2xl shadow-xl border border-white/60 flex flex-col sm:flex-row items-center gap-2"
-          >
-            <div className="flex items-center flex-1 w-full px-3 py-1.5">
-              <Search className="w-5 h-5 text-slate-400 mr-2 shrink-0" />
-              <input
-                type="text"
-                placeholder="Search projects, skills (e.g. React, Market Research)..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="w-full text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
-              />
-            </div>
+        <form className="landing-search" onSubmit={handleSearch}>
+          <input
+            aria-label="Search projects, keywords, or companies"
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search projects, keywords, or companies"
+            value={searchTerm}
+          />
+          <button aria-label="Search" type="submit">
+            <Search size={25} />
+          </button>
+        </form>
 
-            <button
-              type="submit"
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm px-6 py-3 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap"
-            >
-              <Compass className="w-4 h-4" />
-              <span>Explore Projects</span>
-            </button>
-          </form>
+        <button className="landing-sign-in" onClick={() => setCurrentView("login")} type="button">
+          Sign in
+        </button>
+      </header>
 
-          {/* Hero Photos */}
-          <div className="pt-6 grid grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto">
-            <div className="rounded-xl overflow-hidden shadow-md border-2 border-white aspect-[4/3] bg-sky-200">
-              <img
-                src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&auto=format&fit=crop&q=80"
-                alt="Students collaborating"
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-
-            <div className="rounded-xl overflow-hidden shadow-md border-2 border-white aspect-[4/3] bg-sky-200">
-              <img
-                src="https://images.unsplash.com/photo-1531482615713-2afd69097998?w=600&auto=format&fit=crop&q=80"
-                alt="Student presenting project"
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-
-            <div className="rounded-xl overflow-hidden shadow-md border-2 border-white aspect-[4/3] bg-sky-200">
-              <img
-                src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=600&auto=format&fit=crop&q=80"
-                alt="Company discussion"
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Category Filters */}
-      <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-2 flex items-center gap-2 overflow-x-auto">
-          {categories.map(cat => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setActiveCategory(cat)}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                activeCategory === cat
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Featured Projects */}
-      <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-              Featured Micro-Internship Projects
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Proyek taktis berdurasi 2–6 minggu, fleksibel dengan jadwal kuliah Anda
+      <main>
+        <section className="landing-hero">
+          <img alt="" className="landing-hero-image" src={heroImage} />
+          <div className="landing-hero-overlay" />
+          <div className="landing-hero-content">
+            <h1>
+              Start &amp; earn
+              <span>real-work experience here</span>
+            </h1>
+            <p>
+              Discover micro-internship projects matched to your skills, interests, and class
+              schedule with no long-term commitment required.
             </p>
           </div>
+        </section>
 
-          <button
-            type="button"
-            onClick={() => setCurrentView('projects_list')}
-            className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 group"
-          >
-            <span>Lihat Semua Proyek</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-          </button>
-        </div>
+        <section className="landing-image-pair">
+          <img alt="Students collaborating on a project" src={panelImageOne} />
+          <img alt="Students celebrating a completed project" src={panelImageTwo} />
+        </section>
 
-        {filteredProjects.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProjects.map(project => (
-              <div
-                key={project.id}
-                className="bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-lg transition-all flex flex-col justify-between group"
-              >
+        <section className="landing-stats">
+          {[
+            ["30+", "Active projects"],
+            ["1k+", "Achieving students"],
+            ["10+", "Corporate partners"],
+          ].map(([value, label]) => (
+            <div className="landing-stat" key={label}>
+              <strong>{value}</strong>
+              <span>{label}</span>
+            </div>
+          ))}
+        </section>
+
+        <section className="landing-workflow landing-section">
+          <div className="landing-section-heading">
+            <h2>A brief dive</h2>
+            <p>How internspace works?</p>
+          </div>
+
+          <div className="landing-workflow-labels">
+            <span>for students</span>
+            <span>for companies</span>
+          </div>
+
+          <div className="landing-workflow-grid">
+            {workflow.map((item, index) => (
+              <article className="landing-workflow-card" key={`${item.title}-${index}`}>
+                <div className="landing-workflow-icon">
+                  {index % 2 === 0 ? <CircleUserRound size={15} /> : <CircleHelp size={15} />}
+                </div>
                 <div>
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={project.companyLogo}
-                        alt={project.company}
-                        className="w-10 h-10 rounded-xl object-cover border border-slate-100 shadow-sm"
-                        referrerPolicy="no-referrer"
-                      />
-
-                      <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1">
-                          {project.title}
-                        </h3>
-                        <p className="text-xs text-slate-500">
-                          {project.company}
-                        </p>
-                      </div>
-                    </div>
-
-                    {project.isFeatured && (
-                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                        Featured
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-4">
-                    {project.description}
-                  </p>
-
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {project.skillsRequired.slice(0, 3).map(skill => (
-                      <span
-                        key={skill}
-                        className="text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
+                  <h3>{item.title}</h3>
+                  <p>{item.detail}</p>
                 </div>
-
-                <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3 text-xs">
-                  <div className="space-y-0.5">
-                    <div className="flex flex-wrap items-center gap-1 text-slate-500 text-[11px]">
-                      <Clock className="w-3 h-3 text-slate-400" />
-                      <span>{project.duration}</span>
-                      <span>·</span>
-                      <span>{project.location}</span>
-                    </div>
-                    <p className="font-bold text-blue-600">
-                      {project.stipend}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedProjectId(project.id);
-                      setCurrentView('project_detail');
-                    }}
-                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs transition-colors shadow-sm"
-                  >
-                    Apply Now
-                  </button>
-                </div>
-              </div>
+              </article>
             ))}
           </div>
-        ) : (
-          <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
-            <Search className="mx-auto h-8 w-8 text-slate-300" />
-            <p className="mt-3 text-sm font-semibold text-slate-700">
-              Tidak ada proyek yang cocok.
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Coba kata kunci atau kategori yang berbeda.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setSearchTerm('');
-                setActiveCategory('All');
-              }}
-              className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-            >
-              Reset Pencarian
-            </button>
+        </section>
+
+        <section className="landing-categories landing-section">
+          <div className="landing-section-heading">
+            <h2>Featured Categories</h2>
+            <p>Jelajahi berbagai bidang yang sesuai dengan passion Anda.</p>
           </div>
-        )}
-      </section>
-
-      {/* Why Choose InternSpace */}
-      <section className="bg-white border-y border-slate-200 py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
-              Mengapa Memilih InternSpace?
-            </h2>
-            <p className="text-xs text-slate-500 mt-2">
-              Berdasarkan hasil survei 100+ mahasiswa ULBI Bandung, platform ini
-              dirancang khusus untuk mengatasi keterbatasan magang konvensional.
-            </p>
+          <div className="landing-category-grid">
+            {categories.map((category) => (
+              <button
+                className="landing-category-card"
+                key={category.title}
+                onClick={() => setCurrentView("projects_list")}
+                type="button"
+              >
+                <span className="landing-category-icon">
+                  <img alt="" src={category.icon} />
+                </span>
+                <strong>{category.title}</strong>
+                <span>{category.detail}</span>
+              </button>
+            ))}
           </div>
+          <button className="landing-text-link" onClick={() => setCurrentView("projects_list")} type="button">
+            Lihat Semua
+            <img alt="" src={categoryArrow} />
+          </button>
+        </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
-                <Clock className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-sm text-slate-900">
-                Fleksibel (2–6 Minggu)
-              </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Menghilangkan kendala durasi magang konvensional yang sering
-                berbenturan dengan jadwal perkuliahan.
+        <section className="landing-testimonials landing-section">
+          <div className="landing-section-heading">
+            <h2>What were their words?</h2>
+          </div>
+          <div className="landing-testimonial-grid">
+            <article className="landing-testimonial-card">
+              <img alt="" className="landing-quote" src={quoteIcon} />
+              <p>
+                “Internspace gave me the opportunity to work on real projects at GoTo while
+                staying focused on my thesis. My portfolio has improved dramatically!”
               </p>
-            </div>
+              <div className="landing-person">
+                <img alt="Fatih Alfaluza" src={studentAvatar} />
+                <div>
+                  <strong>Fatih Alfaluza</strong>
+                  <span>Digital Business Student, International Logistics and Business Baccalaureate (ULBI)</span>
+                </div>
+              </div>
+            </article>
+            <article className="landing-testimonial-card">
+              <img alt="" className="landing-quote" src={quoteIcon} />
+              <p>
+                “Finding talented individuals for our market research has become much easier and
+                more cost-effective. The students on this platform are very professional.”
+              </p>
+              <div className="landing-person">
+                <img alt="Anisa Aulia Rita Putri" src={companyAvatar} />
+                <div>
+                  <strong>Anisa Aulia Rita Putri</strong>
+                  <span>Head of Research &amp; Development, FinTech XYZ</span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
 
-            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-sm text-slate-900">
-                Skill Matching Cerdas
-              </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Pencocokan proyek berdasarkan kompetensi, minat, dan tools yang
-                dikuasai mahasiswa.
-              </p>
-            </div>
+        <section className="landing-benefits landing-section">
+          <div className="landing-section-heading">
+            <h2>Why choose internspace?</h2>
+          </div>
+          <div className="landing-benefit-grid">
+            {benefits.map((benefit) => (
+              <article className="landing-benefit-card" key={benefit.title}>
+                <span className="landing-benefit-icon">
+                  <img alt="" src={benefit.icon} />
+                </span>
+                <h3>{benefit.title}</h3>
+                <p>{benefit.detail}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      </main>
 
-            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
-                <Briefcase className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-sm text-slate-900">
-                Portofolio Digital Otomatis
-              </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Hasil proyek tersimpan sebagai portofolio digital yang siap
-                dibagikan kepada perekrut industri.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
-                <Award className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-sm text-slate-900">
-                Sertifikat & Rating Resmi
-              </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Dapatkan evaluasi kualitas, komunikasi, dan ketepatan waktu,
-                beserta sertifikat digital.
-              </p>
-            </div>
+      <footer className="landing-footer">
+        <div className="landing-footer-main">
+          <div>
+            <strong>internspace</strong>
+            <p>Micro-internship that connects fully-potential students with true company projects</p>
+          </div>
+          <nav>
+            <button type="button">About us</button>
+            <button type="button">Category</button>
+            <button type="button">Testimonials</button>
+            <button type="button">Details</button>
+          </nav>
+        </div>
+        <div className="landing-footer-bottom">
+          <span>© 2024 internspace. Bridging academia and execution.</span>
+          <div>
+            <button aria-label="Social link" type="button"><img alt="" src={socialIconOne} /></button>
+            <button aria-label="Social link" type="button"><img alt="" src={socialIconTwo} /></button>
+            <button aria-label="Social link" type="button"><img alt="" src={socialIconThree} /></button>
           </div>
         </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-        <div className="text-center max-w-xl mx-auto mb-10">
-          <h2 className="text-xl font-bold text-slate-900">
-            Apa Kata Pengguna Kami?
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Pengalaman mahasiswa dan mitra industri di InternSpace
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center gap-1 text-amber-400">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-amber-400" />
-              ))}
-            </div>
-
-            <p className="text-xs text-slate-700 italic leading-relaxed">
-              &quot;Sebagai mahasiswa semester 6 yang sibuk skripsi dan kuliah,
-              program micro internship 3 minggu di TechNova memberikan saya
-              pengalaman riil memegang proyek riset pasar tanpa mengorbankan
-              kuliah.&quot;
-            </p>
-
-            <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-                alt="Fatih"
-                className="w-9 h-9 rounded-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-              <div>
-                <h4 className="text-xs font-bold text-slate-900">
-                  Fatih Alfaluza
-                </h4>
-                <p className="text-[11px] text-slate-500">
-                  Mahasiswa S1 Bisnis Digital, ULBI
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center gap-1 text-amber-400">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-amber-400" />
-              ))}
-            </div>
-
-            <p className="text-xs text-slate-700 italic leading-relaxed">
-              &quot;InternSpace sangat membantu UMKM kami mendapatkan talenta
-              muda yang kompeten untuk menyelesaikan redesign landing page
-              dalam hitungan minggu. Seleksinya cepat dan hasilnya berkualitas!&quot;
-            </p>
-
-            <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-              <img
-                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80"
-                alt="Sarah Jenkins"
-                className="w-9 h-9 rounded-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-              <div>
-                <h4 className="text-xs font-bold text-slate-900">
-                  Sarah Jenkins
-                </h4>
-                <p className="text-[11px] text-slate-500">
-                  Product Manager, TechNova Solutions
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="bg-blue-600 text-white py-12 px-4 sm:px-6 lg:px-8 text-center">
-        <div className="max-w-3xl mx-auto space-y-4">
-          <h2 className="text-2xl font-bold tracking-tight">
-            Siap Memulai Pengalaman Nyata?
-          </h2>
-          <p className="text-xs sm:text-sm text-blue-100 max-w-xl mx-auto">
-            Bergabunglah bersama mahasiswa dan perusahaan lainnya untuk
-            membangun pengalaman serta portofolio profesional.
-          </p>
-
-          <div className="pt-2 flex flex-wrap justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => setCurrentView('login_student')}
-              className="px-6 py-2.5 bg-white text-blue-600 hover:bg-blue-50 font-bold text-xs rounded-xl shadow-sm transition-colors"
-            >
-              Masuk sebagai Mahasiswa
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCurrentView('login_company')}
-              className="px-6 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs rounded-xl border border-blue-400/30 transition-colors"
-            >
-              Daftar sebagai Perusahaan
-            </button>
-          </div>
-
-          {userRole !== 'guest' && (
-            <p className="pt-1 text-xs text-blue-100">
-              Anda sedang menggunakan akun demo. Untuk keluar, gunakan menu
-              profil di Navbar.
-            </p>
-          )}
-        </div>
-      </section>
+      </footer>
     </div>
   );
 };

@@ -97,6 +97,7 @@ const AppContent: React.FC = () => {
     AUTH_VIEWS.includes(currentView) ||
     (isGuest && ADMIN_VIEWS.includes(currentView));
   const hasOwnAdminShell = currentView === "students_directory" || currentView === "invite_student";
+  const isLanding = currentView === "landing";
 
   const isProtectedView = [
     ...STUDENT_VIEWS,
@@ -296,7 +297,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900">
-      {!isAuthPage && !hasOwnAdminShell && <Navbar />}
+      {!isAuthPage && !hasOwnAdminShell && !isLanding && <Navbar />}
 
       <main className="flex-1">
         {renderPage()}
@@ -304,7 +305,7 @@ const AppContent: React.FC = () => {
 
       {!isAuthPage && !hasOwnAdminShell && !isGuest && <ChatModal />}
 
-      {!isAuthPage && !hasOwnAdminShell && <Footer />}
+      {!isAuthPage && !hasOwnAdminShell && !isLanding && <Footer />}
     </div>
   );
 };
