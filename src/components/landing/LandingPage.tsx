@@ -156,7 +156,7 @@ export const LandingPage: React.FC = () => {
           ))}
         </section>
 
-        <section className="landing-workflow landing-section">
+        <section className="landing-workflow landing-section" id="brief-dive">
           <div className="landing-section-heading">
             <h2>A brief dive</h2>
             <p>How internspace works?</p>
@@ -182,7 +182,7 @@ export const LandingPage: React.FC = () => {
           </div>
         </section>
 
-        <section className="landing-categories landing-section">
+        <section className="landing-categories landing-section" id="featured-categories">
           <div className="landing-section-heading">
             <h2>Featured Categories</h2>
             <p>Jelajahi berbagai bidang yang sesuai dengan passion Anda.</p>
@@ -209,7 +209,7 @@ export const LandingPage: React.FC = () => {
           </button>
         </section>
 
-        <section className="landing-testimonials landing-section">
+        <section className="landing-testimonials landing-section" id="testimonials">
           <div className="landing-section-heading">
             <h2>What were their words?</h2>
           </div>
@@ -245,7 +245,7 @@ export const LandingPage: React.FC = () => {
           </div>
         </section>
 
-        <section className="landing-benefits landing-section">
+        <section className="landing-benefits landing-section" id="why-internspace">
           <div className="landing-section-heading">
             <h2>Why choose internspace?</h2>
           </div>
@@ -270,10 +270,10 @@ export const LandingPage: React.FC = () => {
             <p>Micro-internship that connects fully-potential students with true company projects</p>
           </div>
           <nav>
-            <button type="button">About us</button>
-            <button type="button">Category</button>
-            <button type="button">Testimonials</button>
-            <button type="button">Details</button>
+            <a href="#brief-dive">About us</a>
+            <a href="#featured-categories">Categories</a>
+            <a href="#testimonials">Testimonials</a>
+            <a href="#why-internspace">Details</a>
           </nav>
         </div>
         <div className="landing-footer-bottom">

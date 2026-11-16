@@ -31,6 +31,7 @@
 
 .landing-page {
   font-family: "League Spartan", "Trebuchet MS", Arial, sans-serif;
+  scroll-behavior: smooth;
 }
 
 .landing-nav {
@@ -519,11 +520,11 @@
   gap: 28px;
 }
 
-.landing-footer nav button {
-  background: transparent;
+.landing-footer nav a {
   color: #404751;
   font-size: 12px;
   padding: 0;
+  text-decoration: none;
 }
 
 .landing-footer-bottom {
