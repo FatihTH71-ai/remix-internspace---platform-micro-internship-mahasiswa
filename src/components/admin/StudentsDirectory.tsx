@@ -81,9 +81,11 @@ export const StudentsDirectory: React.FC<StudentsDirectoryProps> = ({
 }) => {
   const { setCurrentView, logout } = useApp();
   const [isInviteOpen, setIsInviteOpen] = useState(showInviteModalInitially);
+  const [isInviteSuccessOpen, setIsInviteSuccessOpen] = useState(false);
   const [activePage, setActivePage] = useState(1);
   const [inviteName, setInviteName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteUniversity, setInviteUniversity] = useState('');
 
   const handleExport = () => {
     const csv = [
@@ -103,8 +105,10 @@ export const StudentsDirectory: React.FC<StudentsDirectoryProps> = ({
   const handleInvite = (event: React.FormEvent) => {
     event.preventDefault();
     setIsInviteOpen(false);
+    setIsInviteSuccessOpen(true);
     setInviteName('');
     setInviteEmail('');
+    setInviteUniversity('');
   };
 
   const handleSignOut = () => {
@@ -248,20 +252,70 @@ export const StudentsDirectory: React.FC<StudentsDirectoryProps> = ({
 
       {isInviteOpen && (
         <div className="fixed inset-0 z-40 grid place-items-center bg-[#1a1c1e]/40 p-4 backdrop-blur-sm">
-          <form onSubmit={handleInvite} className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
+          <form onSubmit={handleInvite} className="w-full max-w-[478px] rounded-[20px] bg-white p-6 shadow-2xl sm:p-8">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.05em] text-[#005f9f]">Student invitation</p>
-                <h2 className="mt-1 text-2xl font-semibold">Invite Student</h2>
-              </div>
-              <button type="button" onClick={() => setIsInviteOpen(false)} className="text-2xl text-[#707882]" aria-label="Close invite dialog">×</button>
+              <h2 className="text-[22px] font-semibold leading-7">Add/invite students</h2>
+              <button type="button" onClick={() => setIsInviteOpen(false)} className="text-[30px] font-bold leading-7 text-[#808080]" aria-label="Close invite dialog">×</button>
             </div>
             <div className="mt-6 space-y-4">
-              <label className="block text-sm">Name<input required value={inviteName} onChange={(event) => setInviteName(event.target.value)} className="mt-1 w-full rounded-xl border border-[#c0c7d3] px-3 py-2 outline-none focus:border-[#005f9f]" /></label>
-              <label className="block text-sm">E-mail<input required type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} className="mt-1 w-full rounded-xl border border-[#c0c7d3] px-3 py-2 outline-none focus:border-[#005f9f]" /></label>
+              <label className="block text-base leading-5">
+                Name
+                <input
+                  required
+                  value={inviteName}
+                  onChange={(event) => setInviteName(event.target.value)}
+                  placeholder="e.g. Fatih Alfaluza"
+                  className="mt-2 h-10 w-full rounded-[9px] border border-[#d8d8d8] px-4 text-base text-[#202124] outline-none placeholder:text-[#77808d] focus:border-[#005f9f]"
+                />
+              </label>
+              <label className="block text-base leading-5">
+                E-mail
+                <input
+                  required
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(event) => setInviteEmail(event.target.value)}
+                  placeholder="e.g. fatih@email.com"
+                  className="mt-2 h-10 w-full rounded-[9px] border border-[#d8d8d8] px-4 text-base text-[#202124] outline-none placeholder:text-[#77808d] focus:border-[#005f9f]"
+                />
+              </label>
+              <label className="block text-base leading-5">
+                University
+                <select
+                  required
+                  value={inviteUniversity}
+                  onChange={(event) => setInviteUniversity(event.target.value)}
+                  className="mt-2 h-10 w-full rounded-[9px] border border-[#d8d8d8] bg-white px-4 text-base text-[#5f6670] outline-none focus:border-[#005f9f]"
+                >
+                  <option value="">e.g. Universitas Logistik dan Bisnis Internasional</option>
+                  <option value="Universitas Logistik dan Bisnis Internasional">Universitas Logistik dan Bisnis Internasional</option>
+                  <option value="Stanford University">Stanford University</option>
+                  <option value="State University">State University</option>
+                  <option value="Tech Institute">Tech Institute</option>
+                </select>
+              </label>
             </div>
-            <button type="submit" className="mt-6 w-full rounded-full bg-[#005f9f] py-3 text-sm text-white">Invite Student</button>
+            <div className="mt-6 flex justify-end">
+              <button type="submit" className="rounded-[9px] bg-[#0068a9] px-4 py-2.5 text-sm font-semibold text-white">Invite Student</button>
+            </div>
           </form>
+        </div>
+      )}
+
+      {isInviteSuccessOpen && (
+        <div className="fixed inset-0 z-40 grid place-items-center bg-[#1a1c1e]/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-[420px] rounded-[20px] bg-white p-8 text-center shadow-2xl">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#dcfce7] text-3xl text-[#15803d]">✓</div>
+            <h2 className="mt-5 text-2xl font-semibold">Invitation sent</h2>
+            <p className="mt-2 text-base leading-6 text-[#5f6670]">The student invitation has been submitted successfully.</p>
+            <button
+              type="button"
+              onClick={() => setIsInviteSuccessOpen(false)}
+              className="mt-6 rounded-[9px] bg-[#0068a9] px-5 py-2.5 text-sm font-semibold text-white"
+            >
+              Back to Students Directory
+            </button>
+          </div>
         </div>
       )}
     </div>
