@@ -1,643 +1,371 @@
+
 import React, { useState } from "react";
 import {
-  BriefcaseBusiness,
   Search,
   Globe,
   MessageSquare,
   Bell,
-  UserCircle,
-  Settings,
+  ChevronDown,
   LogOut,
-  ShieldCheck,
-  Sparkles,
-  GraduationCap,
-  X,
-  Check,
-  Trash2,
+  User,
+  BriefcaseBusiness,
+  LayoutDashboard,
   Menu,
+  X,
+  ShieldCheck,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
+
+type Language = "id" | "en";
 
 export const Navbar: React.FC = () => {
   const {
     currentUser,
     userRole,
-    language,
-    setLanguage,
     currentView,
     setCurrentView,
     logout,
-    setIsChatOpen,
     alerts,
-    messages,
     clearAlerts,
+    setIsChatOpen,
   } = useApp();
 
-  const [showLanguage, setShowLanguage] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
-  const [showAlerts, setShowAlerts] = useState(false);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [language, setLanguage] = useState<Language>("id");
+  const [languageOpen, setLanguageOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isIndonesian = language === "id";
-  const isGuest = !currentUser || userRole === "guest";
-
-  const safeAlerts = Array.isArray(alerts) ? alerts : [];
-  const safeMessages = Array.isArray(messages) ? messages : [];
-
-  const unreadMessages = safeMessages.filter(
-    (message) => message?.isUnread
-  ).length;
-
-  const labels = {
-    explore: isIndonesian ? "Jelajahi Proyek" : "Explore Projects",
-    premium: isIndonesian ? "Harga & Premium" : "Pricing & Premium",
-    dashboard: isIndonesian ? "Dashboard Saya" : "My Dashboard",
-    certificates: isIndonesian
-      ? "Sertifikat Digital"
-      : "Digital Certificates",
-    search: isIndonesian
-      ? "Cari proyek, kata kunci, atau perusahaan"
-      : "Search projects, keywords, or companies",
-    signIn: isIndonesian ? "Masuk" : "Sign In",
-    getStarted: isIndonesian ? "Mulai Sekarang" : "Get Started",
-    profile: isIndonesian ? "Profil Saya" : "My Profile",
-    settings: isIndonesian ? "Pengaturan" : "Settings",
-    signOut: isIndonesian ? "Keluar" : "Sign Out",
-    alerts: isIndonesian ? "Notifikasi Sistem" : "System Alerts",
-    noAlerts: isIndonesian
-      ? "Belum ada notifikasi"
-      : "No notifications yet",
-    clearAlerts: isIndonesian
-      ? "Hapus notifikasi"
-      : "Clear notifications",
-    admin: isIndonesian ? "Login administrator" : "Administrator login",
-    chat: isIndonesian ? "Pesan" : "Messages",
-    student: isIndonesian ? "Mahasiswa" : "Student",
-    company: isIndonesian ? "Perusahaan" : "Company",
-    close: isIndonesian ? "Tutup" : "Close",
-    menu: isIndonesian ? "Menu" : "Menu",
-    notification: isIndonesian ? "Notifikasi" : "Notification",
-  };
-
-  const displayName =
-    currentUser?.name?.trim() ||
-    currentUser?.email?.split("@")[0] ||
-    (isIndonesian ? "Pengguna" : "User");
-
-  const roleLabel =
-    userRole === "admin"
-      ? "Administrator"
-      : userRole === "company"
-        ? labels.company
-        : labels.student;
-
-  const roleDashboard =
-    userRole === "admin"
-      ? "admin_dashboard"
-      : userRole === "company"
-        ? "candidate_profile"
-        : "student_dashboard";
+  const isId = language === "id";
 
   const navigate = (view: string) => {
     setCurrentView(view);
-    setShowProfile(false);
-    setShowAlerts(false);
-    setShowLanguage(false);
-    setShowMobileMenu(false);
-  };
-
-  const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    // Pengunjung harus login sebelum membuka daftar proyek.
-    if (isGuest) {
-      navigate("login");
-      return;
-    }
-
-    navigate("projects_list");
+    setMobileOpen(false);
+    setProfileOpen(false);
   };
 
   const handleLogout = () => {
-    setShowProfile(false);
-    setShowAlerts(false);
-    setShowMobileMenu(false);
     logout();
+    setProfileOpen(false);
+    navigate("landing");
   };
 
-  const toggleAlerts = () => {
-    setShowAlerts((previous) => !previous);
-    setShowProfile(false);
-    setShowLanguage(false);
-  };
+  const dashboardView =
+    userRole === "company"
+      ? "company_dashboard"
+      : userRole === "admin"
+        ? "admin_dashboard"
+        : "student_dashboard";
 
-  const toggleProfile = () => {
-    setShowProfile((previous) => !previous);
-    setShowAlerts(false);
-    setShowLanguage(false);
-  };
+  const dashboardLabel = isId ? "Dashboard Saya" : "My Dashboard";
+
+  const navigationItems =
+    userRole === "company"
+      ? [
+          { label: isId ? "Dashboard" : "Dashboard", view: "company_dashboard" },
+          { label: isId ? "Kelola Pelamar" : "Applicants", view: "candidate_profile" },
+          { label: isId ? "Sertifikat" : "Certificates", view: "certificate" },
+        ]
+      : userRole === "admin"
+        ? [
+            { label: "Dashboard", view: "admin_dashboard" },
+            { label: isId ? "Mahasiswa" : "Students", view: "students_directory" },
+            { label: isId ? "Perusahaan Mitra" : "Partner Companies", view: "partner_companies" },
+          ]
+        : [
+            { label: isId ? "Jelajahi Proyek" : "Explore Projects", view: "projects_list" },
+            { label: isId ? "Harga & Premium" : "Pricing & Premium", view: "premium" },
+            { label: dashboardLabel, view: dashboardView },
+          ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
-      <div className="mx-auto flex min-h-[72px] max-w-[1600px] items-center gap-4 px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white">
+      <div className="mx-auto flex min-h-[82px] max-w-[1440px] items-center justify-between gap-4 px-5 lg:px-8">
+
         {/* LOGO */}
         <button
-          type="button"
           onClick={() => navigate("landing")}
-          className="flex shrink-0 items-center gap-2.5 text-left"
-          aria-label="InternSpace Home"
+          className="flex shrink-0 items-center gap-3 text-left"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm">
-            <span className="text-sm font-bold">is.</span>
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white shadow-sm">
+            is.
           </div>
 
-          <div className="hidden sm:block">
-            <div className="text-lg font-extrabold leading-5 tracking-tight text-slate-900">
+          <div>
+            <div className="text-xl font-extrabold tracking-tight text-slate-950">
               internspace
             </div>
-            <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-600">
-              Micro Internship
+            <div className="text-xs font-medium tracking-wide text-blue-600">
+              MICRO INTERNSHIP
             </div>
           </div>
-        </button>
 
-        {/* LOGIN ADMIN */}
-        <button
-          type="button"
-          title={labels.admin}
-          aria-label={labels.admin}
-          onClick={() => navigate("login_admin")}
-          className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-blue-50 hover:text-blue-700 sm:flex"
-        >
-          <ShieldCheck size={18} />
+          <ShieldCheck className="ml-1 hidden h-5 w-5 text-slate-400 sm:block" />
         </button>
 
         {/* SEARCH */}
-        <form
-          onSubmit={handleSearch}
-          className="hidden min-w-[150px] max-w-[280px] flex-1 md:block"
-        >
-          <div className="relative">
-            <Search
-              size={18}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder={labels.search}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-xs outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
-            />
-          </div>
-        </form>
+        <div className="hidden max-w-[250px] flex-1 items-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 lg:flex">
+          <Search className="mr-3 h-5 w-5 shrink-0 text-slate-400" />
+          <input
+            type="text"
+            placeholder={isId ? "Cari proyek, keahlian..." : "Search projects, skills..."}
+            className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+            onKeyDown={(event) => {
+              if (event.key === "Enter") navigate("projects_list");
+            }}
+          />
+        </div>
 
-        {/* NAVIGASI DESKTOP */}
-        <nav className="hidden flex-1 items-center justify-center gap-5 lg:flex xl:gap-7">
-          {!isGuest && (
+        {/* DESKTOP NAVIGATION */}
+        <nav className="hidden items-center gap-5 xl:flex">
+          {navigationItems.map((item) => (
             <button
-              type="button"
-              onClick={() => navigate("projects_list")}
-              className={`whitespace-nowrap text-xs font-medium transition hover:text-blue-700 xl:text-sm ${
-                currentView === "projects_list" ||
-                currentView === "project_detail"
-                  ? "text-blue-700"
-                  : "text-slate-700"
+              key={item.view}
+              onClick={() => navigate(item.view)}
+              className={`whitespace-nowrap text-sm font-medium transition ${
+                currentView === item.view
+                  ? "text-blue-600"
+                  : "text-slate-700 hover:text-blue-600"
               }`}
             >
-              {labels.explore}
+              {item.label}
             </button>
-          )}
-
-          {!isGuest && (
-            <button
-              type="button"
-              onClick={() => navigate("premium")}
-              className={`flex items-center gap-1.5 whitespace-nowrap text-xs font-medium transition hover:text-blue-700 xl:text-sm ${
-                currentView === "premium"
-                  ? "text-blue-700"
-                  : "text-slate-700"
-              }`}
-            >
-              <Sparkles size={15} className="text-amber-500" />
-              {labels.premium}
-            </button>
-          )}
-
-          {!isGuest && (
-            <button
-              type="button"
-              onClick={() => navigate(roleDashboard)}
-              className={`whitespace-nowrap text-xs font-medium transition hover:text-blue-700 xl:text-sm ${
-                currentView === roleDashboard
-                  ? "text-blue-700"
-                  : "text-slate-700"
-              }`}
-            >
-              {labels.dashboard}
-            </button>
-          )}
-
-          {!isGuest && (
-            <button
-              type="button"
-              onClick={() => navigate("certificate")}
-              className={`whitespace-nowrap text-xs font-medium transition hover:text-blue-700 xl:text-sm ${
-                currentView === "certificate"
-                  ? "text-blue-700"
-                  : "text-slate-700"
-              }`}
-            >
-              {labels.certificates}
-            </button>
-          )}
+          ))}
         </nav>
 
-        {/* MENU KANAN */}
-        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-          {/* PILIHAN BAHASA GLOBAL */}
-          <div className="relative hidden sm:block">
+        {/* RIGHT ACTIONS */}
+        <div className="flex items-center gap-3">
+
+          {/* LANGUAGE */}
+          <div className="relative">
             <button
-              type="button"
               onClick={() => {
-                setShowLanguage((previous) => !previous);
-                setShowProfile(false);
-                setShowAlerts(false);
+                setLanguageOpen(!languageOpen);
+                setProfileOpen(false);
+                setNotificationOpen(false);
               }}
-              aria-expanded={showLanguage}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              <Globe size={16} />
-              {language === "id" ? "Indonesia" : "English"}
+              <Globe className="h-5 w-5" />
+              <span className="hidden sm:inline">
+                {isId ? "Indonesia" : "English"}
+              </span>
+              <ChevronDown className="h-4 w-4" />
             </button>
 
-            {showLanguage && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+            {languageOpen && (
+              <div className="absolute right-0 top-14 z-50 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-2 shadow-xl">
                 <button
-                  type="button"
                   onClick={() => {
                     setLanguage("id");
-                    setShowLanguage(false);
+                    setLanguageOpen(false);
                   }}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                  className={`block w-full px-4 py-3 text-left text-sm hover:bg-slate-50 ${
+                    isId ? "font-semibold text-blue-600" : "text-slate-700"
+                  }`}
                 >
                   Indonesia
-                  {language === "id" && (
-                    <Check size={15} className="text-blue-600" />
-                  )}
                 </button>
 
                 <button
-                  type="button"
                   onClick={() => {
                     setLanguage("en");
-                    setShowLanguage(false);
+                    setLanguageOpen(false);
                   }}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                  className={`block w-full px-4 py-3 text-left text-sm hover:bg-slate-50 ${
+                    !isId ? "font-semibold text-blue-600" : "text-slate-700"
+                  }`}
                 >
                   English
-                  {language === "en" && (
-                    <Check size={15} className="text-blue-600" />
-                  )}
                 </button>
               </div>
             )}
           </div>
 
-          {!isGuest && (
-            <>
-              {/* CHAT */}
+          {/* CHAT */}
+          {currentUser && (
+            <button
+              onClick={() => setIsChatOpen(true)}
+              title={isId ? "Pesan" : "Messages"}
+              className="hidden rounded-lg p-2 text-slate-600 hover:bg-slate-100 sm:block"
+            >
+              <MessageSquare className="h-6 w-6" />
+            </button>
+          )}
+
+          {/* NOTIFICATION */}
+          {currentUser && (
+            <div className="relative">
               <button
-                type="button"
-                title={labels.chat}
-                aria-label={labels.chat}
-                onClick={() => setIsChatOpen(true)}
-                className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-blue-700"
+                onClick={() => {
+                  setNotificationOpen(!notificationOpen);
+                  setLanguageOpen(false);
+                  setProfileOpen(false);
+                }}
+                title={isId ? "Notifikasi" : "Notifications"}
+                className="relative rounded-lg p-2 text-slate-600 hover:bg-slate-100"
               >
-                <MessageSquare size={19} />
-                {unreadMessages > 0 && (
-                  <span className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-blue-600" />
+                <Bell className="h-6 w-6" />
+                {alerts.length > 0 && (
+                  <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-rose-500" />
                 )}
               </button>
 
-              {/* NOTIFIKASI */}
-              <div className="relative">
-                <button
-                  type="button"
-                  title={labels.alerts}
-                  aria-label={labels.alerts}
-                  aria-expanded={showAlerts}
-                  onClick={toggleAlerts}
-                  className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-blue-700"
-                >
-                  <Bell size={20} />
-                  {safeAlerts.length > 0 && (
-                    <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-rose-500" />
-                  )}
-                </button>
+              {notificationOpen && (
+                <div className="absolute right-0 top-14 z-50 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="font-bold text-slate-900">
+                      {isId ? "Notifikasi" : "Notifications"}
+                    </h3>
+                    <button
+                      onClick={clearAlerts}
+                      className="text-xs font-medium text-blue-600"
+                    >
+                      {isId ? "Hapus semua" : "Clear all"}
+                    </button>
+                  </div>
 
-                {showAlerts && (
-                  <div className="absolute right-0 top-full z-50 mt-3 w-[min(340px,calc(100vw-32px))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
-                    <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3.5">
-                      <h3 className="text-sm font-bold text-slate-900">
-                        {labels.alerts}
-                      </h3>
-                      <button
-                        type="button"
-                        aria-label={labels.close}
-                        onClick={() => setShowAlerts(false)}
-                        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-
-                    <div className="max-h-80 overflow-y-auto">
-                      {safeAlerts.length > 0 ? (
-                        safeAlerts.map((alert) => (
-                          <div
-                            key={alert.id}
-                            className="border-b border-slate-100 px-4 py-3.5 last:border-b-0 hover:bg-slate-50"
-                          >
-                            <p className="text-sm font-semibold text-slate-800">
-                              {alert.title ||
-                                (isIndonesian ? "Notifikasi" : "Notification")}
-                            </p>
-                            <p className="mt-1 text-xs leading-5 text-slate-500">
-                              {alert.detail || ""}
-                            </p>
-                            {alert.timeAgo && (
-                              <p className="mt-2 text-[11px] text-slate-400">
-                                {alert.timeAgo}
-                              </p>
-                            )}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="px-5 py-9 text-center">
-                          <Bell
-                            size={25}
-                            className="mx-auto text-slate-300"
-                          />
-                          <p className="mt-3 text-sm text-slate-500">
-                            {labels.noAlerts}
+                  {alerts.length === 0 ? (
+                    <p className="py-5 text-center text-sm text-slate-500">
+                      {isId ? "Belum ada notifikasi." : "No notifications yet."}
+                    </p>
+                  ) : (
+                    <div className="max-h-72 space-y-3 overflow-y-auto">
+                      {alerts.map((alert) => (
+                        <div
+                          key={alert.id}
+                          className="border-b border-slate-100 pb-3 last:border-0"
+                        >
+                          <p className="text-sm font-semibold text-slate-800">
+                            {alert.title}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-600">
+                            {alert.detail}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            {alert.timeAgo}
                           </p>
                         </div>
-                      )}
+                      ))}
                     </div>
-
-                    {safeAlerts.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={clearAlerts}
-                        className="flex w-full items-center justify-center gap-2 border-t border-slate-100 px-4 py-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-                      >
-                        <Trash2 size={14} />
-                        {labels.clearAlerts}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* PROFIL */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={toggleProfile}
-                  aria-expanded={showProfile}
-                  className="flex items-center gap-2 rounded-xl p-1.5 text-left transition hover:bg-slate-50"
-                >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-600 text-sm font-semibold text-white">
-                    {currentUser?.avatar ? (
-                      <img
-                        src={currentUser.avatar}
-                        alt={displayName}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      displayName.slice(0, 2).toUpperCase()
-                    )}
-                  </div>
-
-                  <div className="hidden max-w-[140px] sm:block">
-                    <p className="truncate text-xs font-bold text-slate-900">
-                      {displayName}
-                    </p>
-                    <p className="mt-0.5 text-[10px] text-slate-500">
-                      {roleLabel}
-                    </p>
-                  </div>
-                </button>
-
-                {showProfile && (
-                  <div className="absolute right-0 top-full z-50 mt-3 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
-                    <div className="border-b border-slate-100 px-3 py-3">
-                      <p className="truncate text-sm font-bold text-slate-900">
-                        {displayName}
-                      </p>
-                      <p className="mt-1 truncate text-xs text-slate-500">
-                        {currentUser?.email || ""}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate(
-                          userRole === "company"
-                            ? "candidate_profile"
-                            : userRole === "admin"
-                              ? "admin_dashboard"
-                              : "student_dashboard"
-                        )
-                      }
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
-                    >
-                      <UserCircle size={17} />
-                      {labels.profile}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => navigate("settings")}
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
-                    >
-                      <Settings size={17} />
-                      {labels.settings}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
-                    >
-                      <LogOut size={17} />
-                      {labels.signOut}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
-          {/* TOMBOL PENGUNJUNG */}
-          {isGuest && (
-            <>
+          {/* PROFILE */}
+          {currentUser ? (
+            <div className="relative">
               <button
-                type="button"
-                onClick={() => navigate("login")}
-                className="hidden whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:block"
+                onClick={() => {
+                  setProfileOpen(!profileOpen);
+                  setLanguageOpen(false);
+                  setNotificationOpen(false);
+                }}
+                className="flex items-center gap-2 rounded-full p-1 hover:bg-slate-50"
               >
-                {labels.signIn}
+                <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-blue-600 font-bold text-white">
+                  {currentUser.avatar ? (
+                    <img
+                      src={currentUser.avatar}
+                      alt={currentUser.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    currentUser.name.slice(0, 2).toUpperCase()
+                  )}
+                </div>
+
+                <div className="hidden text-left sm:block">
+                  <p className="text-sm font-semibold text-slate-900">
+                    {currentUser.name}
+                  </p>
+                  <p className="text-xs capitalize text-slate-500">
+                    {currentUser.role}
+                  </p>
+                </div>
+                <ChevronDown className="hidden h-4 w-4 text-slate-500 sm:block" />
               </button>
 
-              <button
-                type="button"
-                onClick={() => navigate("login_student")}
-                className="whitespace-nowrap rounded-xl bg-blue-700 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-800 sm:px-4 sm:text-sm"
-              >
-                {labels.getStarted}
-              </button>
-            </>
+              {profileOpen && (
+                <div className="absolute right-0 top-14 z-50 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                  <button
+                    onClick={() => navigate(dashboardView)}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    {dashboardLabel}
+                  </button>
+
+                  <button
+                    onClick={() => navigate("candidate_profile")}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <User className="h-4 w-4" />
+                    {isId ? "Profil" : "Profile"}
+                  </button>
+
+                  <div className="my-1 border-t border-slate-100" />
+
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm text-rose-600 hover:bg-rose-50"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    {isId ? "Keluar" : "Log out"}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => navigate("login")}
+              className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              {isId ? "Masuk" : "Sign In"}
+            </button>
           )}
 
-          {/* MENU MOBILE */}
+          {/* MOBILE MENU */}
           <button
-            type="button"
-            aria-label={labels.menu}
-            aria-expanded={showMobileMenu}
-            onClick={() => setShowMobileMenu((previous) => !previous)}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 xl:hidden"
+            aria-label="Toggle navigation"
           >
-            {showMobileMenu ? <X size={21} /> : <Menu size={21} />}
+            {mobileOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
           </button>
         </div>
       </div>
 
-      {/* NAVIGASI MOBILE */}
-      {showMobileMenu && (
-        <div className="border-t border-slate-100 bg-white px-4 py-4 shadow-lg lg:hidden">
-          <form onSubmit={handleSearch} className="mb-4 md:hidden">
-            <div className="relative">
-              <Search
-                size={17}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder={labels.search}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-9 pr-3 text-sm outline-none focus:border-blue-400"
-              />
-            </div>
-          </form>
-
-          <nav className="space-y-1">
-            {!isGuest && (
-              <button
-                type="button"
-                onClick={() => navigate("projects_list")}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                <BriefcaseBusiness size={18} />
-                {labels.explore}
-              </button>
-            )}
-
-            {!isGuest && (
-              <button
-                type="button"
-                onClick={() => navigate("premium")}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                <Sparkles size={18} />
-                {labels.premium}
-              </button>
-            )}
-
-            {!isGuest && (
-              <button
-                type="button"
-                onClick={() => navigate(roleDashboard)}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                <GraduationCap size={18} />
-                {labels.dashboard}
-              </button>
-            )}
-
-            {!isGuest && (
-              <button
-                type="button"
-                onClick={() => navigate("certificate")}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                <ShieldCheck size={18} />
-                {labels.certificates}
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => {
-                setLanguage((previous) =>
-                  previous === "id" ? "en" : "id"
-                );
-                setShowMobileMenu(false);
+      {/* MOBILE NAVIGATION */}
+      {mobileOpen && (
+        <div className="border-t border-slate-200 bg-white px-5 py-4 shadow-lg xl:hidden">
+          <div className="mb-3 flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 lg:hidden">
+            <Search className="h-4 w-4 text-slate-400" />
+            <input
+              placeholder={isId ? "Cari proyek..." : "Search projects..."}
+              className="w-full text-sm outline-none"
+              onKeyDown={(event) => {
+                if (event.key === "Enter") navigate("projects_list");
               }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 sm:hidden"
-            >
-              <Globe size={18} />
-              {language === "id" ? "Switch to English" : "Ganti ke Indonesia"}
-            </button>
+            />
+          </div>
 
-            {!isGuest && (
+          <nav className="flex flex-col">
+            {navigationItems.map((item) => (
               <button
-                type="button"
-                onClick={() => {
-                  setIsChatOpen(true);
-                  setShowMobileMenu(false);
-                }}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                key={item.view}
+                onClick={() => navigate(item.view)}
+                className="rounded-lg px-3 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600"
               >
-                <MessageSquare size={18} />
-                {labels.chat}
+                {item.label}
               </button>
-            )}
-
-            {isGuest && (
-              <button
-                type="button"
-                onClick={() => navigate("login")}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                <UserCircle size={18} />
-                {labels.signIn}
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => navigate("login_admin")}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              <ShieldCheck size={18} />
-              {labels.admin}
-            </button>
-
-            {!isGuest && (
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-rose-600 hover:bg-rose-50"
-              >
-                <LogOut size={18} />
-                {labels.signOut}
-              </button>
-            )}
+            ))}
           </nav>
         </div>
       )}
