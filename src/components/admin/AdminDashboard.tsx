@@ -17,8 +17,8 @@ import aetherEnergyImage from '../../assets/figma-admin/aether-energy.jpeg';
 import overviewIcon from '../../assets/figma-admin/nav/overview.svg';
 import validationsIcon from '../../assets/figma-admin/nav/validations.svg';
 import studentsIcon from '../../assets/figma-admin/nav/students.svg';
-import companiesIcon from '../../assets/figma-admin/nav/companies.svg';
-import signOutIcon from '../../assets/figma-admin/nav/sign-out.svg';
+import companiesIcon from '../../assets/figma-admin/nav/sign-out.svg';
+import signOutIcon from '../../assets/figma-admin/nav/companies.svg';
 
 type AdminTab = 'dashboard' | 'control';
 type AdminDashboardProps = { initialTab?: AdminTab };
