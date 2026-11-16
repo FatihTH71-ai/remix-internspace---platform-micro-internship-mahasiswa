@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=League+Spartan:wght@400;500;600;700;800;900&display=swap");
 @import "tailwindcss";
 
 @layer base {
@@ -56,6 +57,7 @@
   align-items: center;
   background: transparent;
   display: flex;
+  font-weight: 800;
   white-space: nowrap;
 }
 
@@ -139,7 +141,7 @@
   border-radius: 24px;
   color: white;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   margin-left: auto;
   padding: 12px 24px;
   white-space: nowrap;
@@ -181,6 +183,7 @@
 .landing-hero h1 {
   color: #2a313d;
   font-size: clamp(36px, 4vw, 56px);
+  font-weight: 800;
   line-height: 0.98;
   margin: 0;
 }
@@ -237,6 +240,7 @@
 .landing-stat strong {
   color: #005f9f;
   font-size: 17px;
+  font-weight: 800;
 }
 
 .landing-stat span {
@@ -255,6 +259,7 @@
 
 .landing-section-heading h2 {
   font-size: 24px;
+  font-weight: 600;
   margin: 0;
 }
 
@@ -308,6 +313,7 @@
 
 .landing-workflow-card h3 {
   font-size: 13px;
+  font-weight: 600;
   margin: 0 0 4px;
 }
 
@@ -365,6 +371,7 @@
 
 .landing-category-card strong {
   font-size: 13px;
+  font-weight: 500;
 }
 
 .landing-category-card > span:last-child {
@@ -439,6 +446,7 @@
 
 .landing-person strong {
   font-size: 12px;
+  font-weight: 400;
 }
 
 .landing-person span {
@@ -469,6 +477,7 @@
 
 .landing-benefit-card h3 {
   font-size: 17px;
+  font-weight: 400;
   margin: 0 0 12px;
 }
 
@@ -494,6 +503,7 @@
 .landing-footer-main strong {
   color: #005f9f;
   font-size: 27px;
+  font-weight: 700;
 }
 
 .landing-footer-main p {
