@@ -1,5 +1,6 @@
 
 import React, { useEffect } from "react";
+
 import {
   AppProvider,
   useApp,
@@ -7,29 +8,41 @@ import {
   getPathFromView,
 } from "./context/AppContext";
 
+// COMMON
 import { Navbar } from "./components/common/Navbar";
 import { Footer } from "./components/common/Footer";
 
+// AUTH
 import { AuthPage } from "./components/auth/AuthPage";
 import { LoginAdminPage } from "./components/auth/LoginAdminPage";
 
+// LANDING
 import { LandingPage } from "./components/landing/LandingPage";
+
+// STUDENT
 import { StudentDashboard } from "./components/student/StudentDashboard";
 
+// PROJECTS
 import { ProjectsListPage } from "./components/projects/ProjectsListPage";
 import { ProjectDetailPage } from "./components/projects/ProjectDetailPage";
 
+// APPLICATION
 import { ApplicationWizard } from "./components/apply/ApplicationWizard";
 
+// PREMIUM
 import { PremiumPricingPage } from "./components/premium/PremiumPricingPage";
 import { PaymentCheckoutPage } from "./components/premium/PaymentCheckoutPage";
 
+// COMPANY
+import CompanyDashboard from "./components/company/CompanyDashboard";
 import { CompanyHiredWorkspace } from "./components/company/CompanyHiredWorkspace";
 
+// ADMIN
 import { AdminDashboard } from "./components/admin/AdminDashboard";
 import { StudentsDirectory } from "./components/admin/StudentsDirectory";
 import { PartnerCompanies } from "./components/admin/PartnerCompanies";
 
+// MESSAGES
 import ChatModal from "./components/messages/ChatModal";
 
 const AUTH_VIEWS = [
@@ -49,11 +62,10 @@ const STUDENT_VIEWS = [
   "apply_step2",
   "apply_step3",
   "apply_success",
-  "certificate",
-  "rating_feedback",
 ];
 
 const COMPANY_VIEWS = [
+  "company_dashboard",
   "candidate_profile",
   "rating_feedback",
   "certificate",
@@ -92,115 +104,87 @@ const AppContent: React.FC = () => {
   ].includes(currentView);
 
   const roleIsUnauthorized =
-    (userRole === "student" && ADMIN_VIEWS.includes(currentView)) ||
+    (userRole === "student" &&
+      [...COMPANY_VIEWS, ...ADMIN_VIEWS].includes(currentView)) ||
     (userRole === "company" &&
-      [
-        ...STUDENT_VIEWS,
-        ...ADMIN_VIEWS,
-      ].includes(currentView)) ||
+      [...STUDENT_VIEWS, ...ADMIN_VIEWS].includes(currentView)) ||
     (userRole === "admin" &&
-      [
-        ...STUDENT_VIEWS,
-        ...COMPANY_VIEWS,
-      ].includes(currentView));
+      [...STUDENT_VIEWS, ...COMPANY_VIEWS].includes(currentView));
 
-  // Sinkronkan halaman saat pengguna menekan Back atau Forward.
-useEffect(() => {
-  const handlePopState = () => {
-    setCurrentView(getViewFromPath(window.location.pathname));
-  };
+  // BROWSER BACK / FORWARD
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentView(getViewFromPath(window.location.pathname));
+    };
 
-  window.addEventListener("popstate", handlePopState);
+    window.addEventListener("popstate", handlePopState);
 
-  return () => {
-    window.removeEventListener("popstate", handlePopState);
-  };
-}, [setCurrentView]);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [setCurrentView]);
 
- useEffect(() => {
-  // Admin yang sudah login tidak perlu melihat form login admin.
-  if (
-    !isGuest &&
-    userRole === "admin" &&
-    currentView === "login_admin"
-  ) {
-    setCurrentView("admin_dashboard");
-    return;
-  }
-
-  // Rute admin selalu mengarah ke login admin jika belum login.
-  if (isGuest && isProtectedView) {
-    setCurrentView(
-      ADMIN_VIEWS.includes(currentView)
-        ? "login_admin"
-        : "login"
-    );
-    return;
-  }
-
-  // Batasi akses berdasarkan role pengguna.
-  if (!isGuest && roleIsUnauthorized) {
-    if (userRole === "admin") {
-      setCurrentView("admin_dashboard");
-    } else if (userRole === "company") {
-      setCurrentView("candidate_profile");
-    } else {
-      setCurrentView("student_dashboard");
+  // PROTEKSI ROLE
+  useEffect(() => {
+    if (isGuest && isProtectedView) {
+      setCurrentView(
+        ADMIN_VIEWS.includes(currentView) ? "login_admin" : "login"
+      );
+      return;
     }
-  }
-}, [
-  currentView,
-  isGuest,
-  isProtectedView,
-  roleIsUnauthorized,
-  userRole,
-  setCurrentView,
-]);
 
-  // Sinkronkan navigasi aplikasi ke alamat URL browser.
-useEffect(() => {
-  const targetPath = getPathFromView(currentView);
-  const currentPath =
-    window.location.pathname.replace(/\/+$/, "") || "/";
+    if (!isGuest && roleIsUnauthorized) {
+      if (userRole === "admin") {
+        setCurrentView("admin_dashboard");
+      } else if (userRole === "company") {
+        setCurrentView("company_dashboard");
+      } else {
+        setCurrentView("student_dashboard");
+      }
+    }
+  }, [
+    currentView,
+    isGuest,
+    isProtectedView,
+    roleIsUnauthorized,
+    userRole,
+    setCurrentView,
+  ]);
 
-  if (targetPath) {
-    if (currentPath !== targetPath) {
+  // URL SYNC
+  useEffect(() => {
+    const targetPath = getPathFromView(currentView);
+    const currentPath =
+      window.location.pathname.replace(/\/+$/, "") || "/";
+
+    if (targetPath && currentPath !== targetPath) {
       window.history.pushState(null, "", targetPath);
     }
-
-    return;
-  }
-
-  if (
-    currentPath === "/admin" ||
-    currentPath.startsWith("/admin/")
-  ) {
-    window.history.pushState(null, "", "/");
-  }
-}, [currentView]);
+  }, [currentView]);
 
   const renderPage = (): React.ReactNode => {
-    // Jangan tampilkan halaman terproteksi ketika pengunjung
-    // belum login, termasuk sebelum useEffect melakukan redirect.
-    // Rute admin yang dilindungi langsung menampilkan login admin.
-if (isGuest && ADMIN_VIEWS.includes(currentView)) {
-  return <LoginAdminPage />;
-}
+    if (isGuest && ADMIN_VIEWS.includes(currentView)) {
+      return <LoginAdminPage />;
+    }
 
-// Halaman terlindungi lainnya tetap menggunakan login biasa.
-if (isGuest && isProtectedView) {
-  return <AuthPage initialTab="student" />;
-}
+    if (isGuest && isProtectedView) {
+      return <AuthPage initialTab="student" />;
+    }
 
-    // Halaman yang tidak sesuai role tidak dirender.
     if (!isGuest && roleIsUnauthorized) {
-      return <LandingPage />;
+      if (userRole === "company") {
+        return <CompanyDashboard />;
+      }
+
+      if (userRole === "admin") {
+        return <AdminDashboard initialTab="dashboard" />;
+      }
+
+      return <StudentDashboard />;
     }
 
     switch (currentView) {
-      // =========================
-      // AUTENTIKASI
-      // =========================
+      // AUTH
       case "login_admin":
         return <LoginAdminPage />;
 
@@ -211,36 +195,25 @@ if (isGuest && isProtectedView) {
       case "login_company":
         return <AuthPage initialTab="company" />;
 
-      // =========================
-      // LANDING PAGE
-      // =========================
+      // LANDING
       case "landing":
         return <LandingPage />;
 
-      // =========================
-      // DASHBOARD MAHASISWA
-      // =========================
+      // STUDENT
       case "student_dashboard":
         return <StudentDashboard />;
 
-      // =========================
-      // DAFTAR PROYEK
-      // =========================
+      // PROJECTS
       case "projects_list":
         return <ProjectsListPage />;
 
       case "projects_ad":
         return <ProjectsListPage showAdInitially={true} />;
 
-      // =========================
-      // DETAIL PROYEK
-      // =========================
       case "project_detail":
         return <ProjectDetailPage />;
 
-      // =========================
-      // PENDAFTARAN PROYEK
-      // =========================
+      // APPLICATION
       case "application_wizard":
       case "apply_step1":
         return (
@@ -262,22 +235,11 @@ if (isGuest && isProtectedView) {
           <ApplicationWizard currentStepView="apply_success" />
         );
 
-      // =========================
-      // PREMIUM DAN PEMBAYARAN
-      // =========================
-      case "premium":
-        return <PremiumPricingPage />;
+      // COMPANY DASHBOARD
+      case "company_dashboard":
+        return <CompanyDashboard />;
 
-      case "payment":
-      case "payment_checkout":
-        return <PaymentCheckoutPage isSuccessView={false} />;
-
-      case "payment_success":
-        return <PaymentCheckoutPage isSuccessView={true} />;
-
-      // =========================
-      // WORKSPACE PERUSAHAAN
-      // =========================
+      // COMPANY WORKSPACE
       case "candidate_profile":
         return (
           <CompanyHiredWorkspace initialViewMode="profile" />
@@ -293,9 +255,18 @@ if (isGuest && isProtectedView) {
           <CompanyHiredWorkspace initialViewMode="rating" />
         );
 
-      // =========================
+      // PREMIUM / PAYMENT
+      case "premium":
+        return <PremiumPricingPage />;
+
+      case "payment":
+      case "payment_checkout":
+        return <PaymentCheckoutPage isSuccessView={false} />;
+
+      case "payment_success":
+        return <PaymentCheckoutPage isSuccessView={true} />;
+
       // ADMIN
-      // =========================
       case "admin_control":
         return <AdminDashboard initialTab="control" />;
 
@@ -313,12 +284,10 @@ if (isGuest && isProtectedView) {
       case "partner_companies":
         return <PartnerCompanies />;
 
+      // SYSTEM
       case "system_alert":
         return <LandingPage />;
 
-      // =========================
-      // HALAMAN DEFAULT
-      // =========================
       default:
         return <LandingPage />;
     }
@@ -328,7 +297,9 @@ if (isGuest && isProtectedView) {
     <div className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900">
       {!isAuthPage && <Navbar />}
 
-      <main className="flex-1">{renderPage()}</main>
+      <main className="flex-1">
+        {renderPage()}
+      </main>
 
       {!isAuthPage && !isGuest && <ChatModal />}
 
