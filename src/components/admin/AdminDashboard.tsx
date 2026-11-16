@@ -14,11 +14,11 @@ import type { SystemAlert } from '../../types';
 import alexRiveraAvatar from '../../assets/figma-admin/alex-rivera.jpeg';
 import quantumCoreImage from '../../assets/figma-admin/quantum-core.jpeg';
 import aetherEnergyImage from '../../assets/figma-admin/aether-energy.jpeg';
-import overviewIcon from '../../assets/figma-students/overview.svg';
-import validationsIcon from '../../assets/figma-students/validations.svg';
-import studentsIcon from '../../assets/figma-students/students.svg';
-import companiesIcon from '../../assets/figma-students/companies.svg';
-import signOutIcon from '../../assets/figma-students/sign-out.svg';
+import overviewIcon from '../../assets/figma-admin/nav/overview.svg';
+import validationsIcon from '../../assets/figma-admin/nav/validations.svg';
+import studentsIcon from '../../assets/figma-admin/nav/students.svg';
+import companiesIcon from '../../assets/figma-admin/nav/companies.svg';
+import signOutIcon from '../../assets/figma-admin/nav/sign-out.svg';
 
 type AdminTab = 'dashboard' | 'control';
 type AdminDashboardProps = { initialTab?: AdminTab };
@@ -123,7 +123,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
               const isActive = item.view === (activeTab === 'control' ? 'admin_control' : 'admin_dashboard');
               return (
                 <button key={item.label} type="button" onClick={() => item.view === 'admin_dashboard' ? setActiveTab('dashboard') : item.view === 'admin_control' ? setActiveTab('control') : setCurrentView(item.view)} className={`flex w-full items-center gap-3 rounded-full px-4 py-3 text-left text-xs font-bold tracking-[0.05em] ${isActive ? 'bg-[#0078c7] text-white' : 'text-[#404751] hover:bg-[#e4e6eb]'}`}>
-                  <img src={item.icon} alt="" className="max-h-5 max-w-[22px]" />
+                  <img src={item.icon} alt="" className={`max-h-5 max-w-[22px] ${isActive && item.view !== 'admin_dashboard' ? 'brightness-0 invert' : !isActive && item.view === 'admin_dashboard' ? 'brightness-0 opacity-70' : ''}`} />
                   {item.label}
                 </button>
               );

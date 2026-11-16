@@ -9,12 +9,12 @@ import exportIcon from '../../assets/figma-students/previous.svg';
 import inviteIcon from '../../assets/figma-students/invite.svg';
 import previousIcon from '../../assets/figma-students/bell.svg';
 import nextIcon from '../../assets/figma-students/more.svg';
-import bellIcon from '../../assets/figma-students/overview.svg';
-import overviewIcon from '../../assets/figma-students/next.svg';
-import validationsIcon from '../../assets/figma-students/students.svg';
-import studentsIcon from '../../assets/figma-students/export.svg';
-import companiesIcon from '../../assets/figma-students/sign-out.svg';
-import signOutIcon from '../../assets/figma-students/companies.svg';
+import bellIcon from '../../assets/figma-students/bell.svg';
+import overviewIcon from '../../assets/figma-admin/nav/overview.svg';
+import validationsIcon from '../../assets/figma-admin/nav/validations.svg';
+import studentsIcon from '../../assets/figma-admin/nav/students.svg';
+import companiesIcon from '../../assets/figma-admin/nav/companies.svg';
+import signOutIcon from '../../assets/figma-admin/nav/sign-out.svg';
 
 interface StudentsDirectoryProps {
   showInviteModalInitially?: boolean;
@@ -145,7 +145,17 @@ export const StudentsDirectory: React.FC<StudentsDirectoryProps> = ({
                     isActive ? 'bg-[#0078c7] text-white' : 'text-[#404751] hover:bg-[#e4e6eb]'
                   }`}
                 >
-                  <img src={item.icon} alt="" className="max-h-5 max-w-[22px]" />
+                  <img
+                    src={item.icon}
+                    alt=""
+                    className={`max-h-5 max-w-[22px] ${
+                      isActive && item.view !== 'admin_dashboard'
+                        ? 'brightness-0 invert'
+                        : !isActive && item.view === 'admin_dashboard'
+                          ? 'brightness-0 opacity-70'
+                          : ''
+                    }`}
+                  />
                   {item.label}
                 </button>
               );
