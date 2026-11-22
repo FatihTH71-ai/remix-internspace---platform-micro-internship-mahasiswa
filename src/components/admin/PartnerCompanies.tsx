@@ -19,11 +19,7 @@ import alexRiveraAvatar from '../../assets/figma-partners/alex-rivera.jpeg';
 import acmeLogo from '../../assets/figma-partners/acme.jpeg';
 import globalFinanceLogo from '../../assets/figma-partners/global-finance.jpeg';
 import ecoSolutionsLogo from '../../assets/figma-partners/eco-solutions.jpeg';
-import overviewIcon from '../../assets/figma-admin/nav/overview.svg';
-import validationsIcon from '../../assets/figma-admin/nav/validations.svg';
-import studentsIcon from '../../assets/figma-admin/nav/students.svg';
-import companiesIcon from '../../assets/figma-admin/nav/companies.svg';
-import signOutIcon from '../../assets/figma-admin/nav/sign-out.svg';
+import { AdminSidebar } from './AdminSidebar';
 
 type PartnerCompany = {
   id: string;
@@ -43,15 +39,8 @@ const partnerCompanies: PartnerCompany[] = [
 
 const industries = ['All', 'Technology', 'Finance', 'Healthcare'];
 
-const navigation = [
-  { label: 'Overview', view: 'admin_dashboard', icon: overviewIcon, gap: 16, iconWidth: 18, iconHeight: 18 },
-  { label: 'Validations', view: 'admin_control', icon: validationsIcon, gap: 18, iconWidth: 16, iconHeight: 20 },
-  { label: 'Students', view: 'students_directory', icon: studentsIcon, gap: 12, iconWidth: 22, iconHeight: 16 },
-  { label: 'Companies', view: 'partner_companies', icon: companiesIcon, gap: 14, iconWidth: 20, iconHeight: 18 },
-];
-
 export const PartnerCompanies: React.FC = () => {
-  const { setCurrentView, logout } = useApp();
+  const { setCurrentView } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIndustry, setSelectedIndustry] = useState('All');
   const [activePage, setActivePage] = useState(1);
@@ -68,11 +57,6 @@ export const PartnerCompanies: React.FC = () => {
       }),
     [searchTerm, selectedIndustry],
   );
-
-  const handleSignOut = () => {
-    logout();
-    setCurrentView('login_admin');
-  };
 
   return (
     <div className="fixed inset-0 z-[60] overflow-auto bg-[#f9f9fc] font-['League_Spartan',sans-serif] text-[#1a1c1e]">
@@ -97,39 +81,7 @@ export const PartnerCompanies: React.FC = () => {
         </div>
       </header>
 
-      <aside className="fixed bottom-0 left-0 top-20 z-20 flex w-64 flex-col justify-between bg-[#f3f3f6] px-4 py-8 max-[1100px]:w-[204px]">
-        <div>
-          <p className="px-4 text-xs uppercase tracking-[0.05em] text-[#707882]">Main Menu</p>
-          <nav className="mt-8 space-y-2">
-            {navigation.map((item) => {
-              const isActive = item.view === 'partner_companies';
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => setCurrentView(item.view)}
-                  style={{ gap: item.gap }}
-                  className={`flex w-full items-center rounded-full px-4 py-3 text-left text-xs font-bold tracking-[0.05em] ${
-                    isActive ? 'bg-[#0078c7] text-white' : 'text-[#404751] hover:bg-[#e4e6eb]'
-                  }`}
-                >
-                  <img
-                    src={item.icon}
-                    alt=""
-                    style={{ width: item.iconWidth, height: item.iconHeight }}
-                    className="shrink-0 object-contain"
-                  />
-                  {item.label}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-        <button type="button" onClick={handleSignOut} className="flex items-center gap-3 px-4 py-3 text-xs tracking-[0.05em] text-[#ba1a1a]">
-          <img src={signOutIcon} alt="" className="h-[18px] w-[18px]" />
-          Sign Out
-        </button>
-      </aside>
+      <AdminSidebar activeView="partner_companies" />
 
       <main className="ml-64 min-h-full px-10 pb-12 pt-28 max-[1100px]:ml-[204px] max-[1100px]:px-8">
         <div className="mx-auto flex max-w-[1280px] flex-col gap-8">

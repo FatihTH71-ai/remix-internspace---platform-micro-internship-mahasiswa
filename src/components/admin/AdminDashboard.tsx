@@ -14,11 +14,7 @@ import type { SystemAlert } from '../../types';
 import alexRiveraAvatar from '../../assets/figma-admin/alex-rivera.jpeg';
 import quantumCoreImage from '../../assets/figma-admin/quantum-core.jpeg';
 import aetherEnergyImage from '../../assets/figma-admin/aether-energy.jpeg';
-import overviewIcon from '../../assets/figma-admin/nav/overview.svg';
-import validationsIcon from '../../assets/figma-admin/nav/validations.svg';
-import studentsIcon from '../../assets/figma-admin/nav/students.svg';
-import companiesIcon from '../../assets/figma-admin/nav/sign-out.svg';
-import signOutIcon from '../../assets/figma-admin/nav/companies.svg';
+import { AdminSidebar } from './AdminSidebar';
 
 type AdminTab = 'dashboard' | 'control';
 type AdminDashboardProps = { initialTab?: AdminTab };
@@ -44,15 +40,8 @@ const initialCompanies: CompanyToVerify[] = [
   { id: 'aether', name: 'Aether Energy', task: 'Verify Contact Details', image: aetherEnergyImage },
 ];
 
-const navigation = [
-  { label: 'Overview', view: 'admin_dashboard', icon: overviewIcon },
-  { label: 'Validations', view: 'admin_control', icon: validationsIcon },
-  { label: 'Students', view: 'students_directory', icon: studentsIcon },
-  { label: 'Companies', view: 'partner_companies', icon: companiesIcon },
-];
-
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard' }) => {
-  const { projects, approveProject, rejectProject, setCurrentView, logout } = useApp();
+  const { projects, approveProject, rejectProject, setCurrentView } = useApp();
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
   const [demoQueue, setDemoQueue] = useState(initialQueue);
   const [companies, setCompanies] = useState(initialCompanies);
@@ -97,11 +86,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
     notify(`Company verified: ${company.name}`, 'success');
   };
 
-  const handleSignOut = () => {
-    logout();
-    setCurrentView('login_admin');
-  };
-
   return (
     <div className="fixed inset-0 z-[60] overflow-auto bg-[#f9f9fc] font-['League_Spartan',sans-serif] text-[#1a1c1e]">
       <header className="fixed inset-x-0 top-0 z-30 flex h-20 items-center justify-between border-b border-[rgba(192,199,211,0.1)] bg-[rgba(248,249,250,0.8)] px-6 backdrop-blur-md sm:px-10">
@@ -120,26 +104,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
         </div>
       </header>
 
-      <aside className="fixed bottom-0 left-0 top-20 z-20 flex w-64 flex-col justify-between bg-[#f3f3f6] px-4 py-8 max-[1100px]:w-[204px]">
-        <div>
-          <p className="px-4 text-xs uppercase tracking-[0.05em] text-[#707882]">Main Menu</p>
-          <nav className="mt-8 space-y-2">
-            {navigation.map((item) => {
-              const isActive = item.view === (activeTab === 'control' ? 'admin_control' : 'admin_dashboard');
-              return (
-                <button key={item.label} type="button" onClick={() => item.view === 'admin_dashboard' ? setActiveTab('dashboard') : item.view === 'admin_control' ? setActiveTab('control') : setCurrentView(item.view)} className={`flex w-full items-center gap-3 rounded-full px-4 py-3 text-left text-xs font-bold tracking-[0.05em] ${isActive ? 'bg-[#0078c7] text-white' : 'text-[#404751] hover:bg-[#e4e6eb]'}`}>
-                  <img src={item.icon} alt="" className={`max-h-5 max-w-[22px] ${isActive && item.view !== 'admin_dashboard' ? 'brightness-0 invert' : !isActive && item.view === 'admin_dashboard' ? 'brightness-0 opacity-70' : ''}`} />
-                  {item.label}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-        <button type="button" onClick={handleSignOut} className="flex items-center gap-3 px-4 py-3 text-xs tracking-[0.05em] text-[#ba1a1a]">
-          <img src={signOutIcon} alt="" className="h-[18px] w-[18px]" />
-          Sign Out
-        </button>
-      </aside>
+      <AdminSidebar
+        activeView={activeTab === 'control' ? 'admin_control' : 'admin_dashboard'}
+        onNavigate={(view) => {
+          if (view === 'admin_dashboard') setActiveTab('dashboard');
+          else if (view === 'admin_control') setActiveTab('control');
+          else setCurrentView(view);
+        }}
+      />
 
       <main className="ml-64 min-h-full px-6 pb-12 pt-28 sm:px-10 max-[1100px]:ml-[204px] max-[1100px]:px-8">
         <div className="mx-auto flex max-w-[1280px] flex-col gap-10">
