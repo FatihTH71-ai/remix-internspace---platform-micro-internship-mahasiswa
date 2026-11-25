@@ -1,13 +1,15 @@
-
 import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
+import { apiJson, apiRequest, apiUpload, ApiClientError } from "../lib/api";
 
 export type UserRole = "student" | "company" | "admin" | "guest";
+export type Language = "id" | "en";
 
 export interface CurrentUser {
   id: string;
@@ -20,6 +22,9 @@ export interface CurrentUser {
   companyName?: string;
   skills?: string[];
   portfolioUrl?: string;
+  phone?: string;
+  isPremium?: boolean;
+  premiumUntil?: string | null;
 }
 
 export type ProjectStatus = "pending" | "approved" | "rejected";
@@ -34,9 +39,11 @@ export interface Project {
   description: string;
   skillsRequired: string[];
   duration: string;
+  durationWeeks?: number;
   location: string;
   stipend: string;
   isFeatured?: boolean;
+  skillMatchPercent?: number;
   status?: ProjectStatus;
   createdAt?: string;
 }
@@ -51,6 +58,7 @@ export type ApplicationStatus =
 export interface Deliverable {
   title: string;
   submittedAt?: string;
+  fileUrl?: string;
   status: "pending" | "submitted" | "approved";
 }
 
@@ -84,6 +92,8 @@ export interface Application {
   submittedAt: string;
   deliverables: Deliverable[];
   rating?: ApplicationRating;
+  isPriority?: boolean;
+  skillMatchPercent?: number;
 }
 
 export interface AppMessage {
@@ -128,6 +138,50 @@ export interface RatingInput {
   isPublic: boolean;
 }
 
+export interface StudentRegistrationInput {
+  role: "student";
+  name: string;
+  email: string;
+  password: string;
+  university: string;
+  major: string;
+  nim?: string;
+  phone: string;
+}
+
+export interface CompanyRegistrationInput {
+  role: "company";
+  name: string;
+  email: string;
+  password: string;
+  companyName: string;
+  industry: string;
+  website?: string;
+}
+
+export type RegistrationInput = StudentRegistrationInput | CompanyRegistrationInput;
+export type PremiumPlanId = "student_premium" | "company_premium";
+export type PaymentMethod = "bank_transfer" | "ewallet";
+
+export interface PendingPaymentPlan {
+  id: PremiumPlanId;
+  name: string;
+  type: "student" | "company";
+}
+
+export interface PaymentTransaction {
+  id: string;
+  plan: PremiumPlanId;
+  planName: string;
+  amount: number;
+  method: PaymentMethod;
+  proofFileId?: string | null;
+  proofUrl?: string | null;
+  status: "pending" | "verified" | "rejected";
+  createdAt?: string;
+  verifiedAt?: string | null;
+}
+
 interface AppContextType {
   currentView: string;
   setCurrentView: React.Dispatch<React.SetStateAction<string>>;
@@ -135,12 +189,20 @@ interface AppContextType {
   setUserRole: React.Dispatch<React.SetStateAction<UserRole>>;
   currentUser: CurrentUser | null;
   setCurrentUser: React.Dispatch<React.SetStateAction<CurrentUser | null>>;
+  authReady: boolean;
+  apiError: string | null;
+  language: Language;
+  setLanguage: React.Dispatch<React.SetStateAction<Language>>;
   projects: Project[];
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
+  projectsLoading: boolean;
+  projectsError: string | null;
   selectedProjectId: string | null;
   setSelectedProjectId: React.Dispatch<React.SetStateAction<string | null>>;
   applications: Application[];
   setApplications: React.Dispatch<React.SetStateAction<Application[]>>;
+  applicationsLoading: boolean;
+  applicationsError: string | null;
   selectedApplicationId: string | null;
   setSelectedApplicationId: React.Dispatch<React.SetStateAction<string | null>>;
   messages: AppMessage[];
@@ -151,17 +213,26 @@ interface AppContextType {
   setIsChatOpen: React.Dispatch<React.SetStateAction<boolean>>;
   activeChatRecipient: CurrentUser | null;
   setActiveChatRecipient: React.Dispatch<React.SetStateAction<CurrentUser | null>>;
-  loginAs: (user: CurrentUser) => void;
-  logout: () => void;
-  submitApplication: (input: SubmitApplicationInput) => Application | null;
-  updateApplicationStatus: (id: string, status: ApplicationStatus) => void;
+  pendingPaymentPlan: PendingPaymentPlan | null;
+  setPendingPaymentPlan: React.Dispatch<React.SetStateAction<PendingPaymentPlan | null>>;
+  latestTransaction: PaymentTransaction | null;
+  loginWithPassword: (email: string, password: string, role: UserRole) => Promise<void>;
+  registerAccount: (input: RegistrationInput) => Promise<void>;
+  logout: () => Promise<void>;
+  submitApplication: (input: SubmitApplicationInput) => Promise<Application>;
+  updateApplicationStatus: (id: string, status: ApplicationStatus) => Promise<void>;
   submitRating: (id: string, rating: RatingInput) => void;
   sendMessage: (recipientName: string, text: string) => void;
-  approveProject: (id: string) => void;
-  rejectProject: (id: string) => void;
-  addProject: (project: Omit<Project, "id" | "createdAt" | "status">) => void;
+  approveProject: (id: string) => Promise<void>;
+  rejectProject: (id: string) => Promise<void>;
+  addProject: (project: Omit<Project, "id" | "createdAt" | "status">) => Promise<Project>;
+  createTransaction: (
+    plan: PremiumPlanId,
+    method: PaymentMethod,
+    proof: File
+  ) => Promise<PaymentTransaction>;
+  reviewTransaction: (id: string, status: "verified" | "rejected") => Promise<void>;
   clearAlerts: () => void;
-  getSkillMatch: (project: Project, skills?: string[]) => number;
   getMyApplications: () => Application[];
   getCompanyProjects: () => Project[];
   getCompanyApplications: () => Application[];
@@ -173,6 +244,11 @@ const VIEW_PATHS: Record<string, string> = {
   login_student: "/login/student",
   login_company: "/login/company",
   login_admin: "/admin",
+  register_student: "/register/student",
+  register_company: "/register/company",
+  forgot_password: "/forgot-password",
+  reset_password: "/reset-password",
+  verify_email: "/verify-email",
   student_dashboard: "/student/dashboard",
   projects_list: "/projects",
   projects_ad: "/projects/ad",
@@ -198,447 +274,450 @@ const VIEW_PATHS: Record<string, string> = {
   system_alert: "/system-alert",
 };
 
-const ADMIN_SESSION_STORAGE_KEY = "internspace_admin_session";
-
 export function getPathFromView(view: string): string {
   return VIEW_PATHS[view] ?? "/";
 }
 
 export function getViewFromPath(path: string): string {
   const cleanPath = path.replace(/\/+$/, "") || "/";
-  const found = Object.entries(VIEW_PATHS).find(
-    ([, routePath]) => routePath === cleanPath
-  );
+  const found = Object.entries(VIEW_PATHS).find(([, routePath]) => routePath === cleanPath);
   return found?.[0] ?? "landing";
 }
 
-const initialProjects: Project[] = [
-  {
-    id: "project-1",
-    title: "Frontend Web Development",
-    company: "Tech Innovation",
-    companyLogo: "https://placehold.co/64x64?text=TI",
-    companyId: "company-1",
-    category: "Technology",
-    description:
-      "Membantu mengembangkan antarmuka web responsif menggunakan React, TypeScript, dan Tailwind CSS.",
-    skillsRequired: ["React", "TypeScript", "Tailwind CSS"],
-    duration: "3 bulan",
-    location: "Remote",
-    stipend: "Rp1.500.000/bulan",
-    isFeatured: true,
-    status: "approved",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "project-2",
-    title: "Graphic Design Campaign",
-    company: "Creative Studio",
-    companyLogo: "https://placehold.co/64x64?text=CS",
-    companyId: "company-2",
-    category: "Design",
-    description:
-      "Membuat aset visual kampanye digital, konten media sosial, dan materi promosi.",
-    skillsRequired: ["Figma", "Canva", "Branding"],
-    duration: "2 bulan",
-    location: "Hybrid",
-    stipend: "Rp1.000.000/bulan",
-    status: "approved",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "project-3",
-    title: "Digital Marketing Research",
-    company: "Growth Lab",
-    companyLogo: "https://placehold.co/64x64?text=GL",
-    companyId: "company-3",
-    category: "Marketing",
-    description:
-      "Melakukan riset pasar, analisis SEO, dan menyusun laporan performa pemasaran digital.",
-    skillsRequired: ["Research", "SEO", "Analytics"],
-    duration: "3 bulan",
-    location: "Remote",
-    stipend: "Rp1.200.000/bulan",
-    status: "approved",
-    createdAt: new Date().toISOString(),
-  },
-];
-
-const initialAlerts: SystemAlert[] = [
-  {
-    id: "alert-welcome",
-    title: "Selamat datang di InternSpace",
-    detail: "Lengkapi profil untuk menemukan proyek yang sesuai.",
-    timeAgo: "Baru saja",
-    type: "info",
-  },
-];
-
 const AppContext = createContext<AppContextType | undefined>(undefined);
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "The request could not be completed.";
+}
+
+export function durationInWeeks(duration: string): number {
+  const match = duration.match(/^\s*(\d+)(?:\s*[-–]\s*(\d+))?\s*(week|weeks|minggu|month|months|bulan)\s*$/i);
+  if (!match) throw new Error("Enter a project duration in weeks or months.");
+  const amount = Number(match[2] ?? match[1]);
+  const unit = match[3].toLowerCase();
+  return unit.startsWith("month") || unit === "bulan" ? amount * 4 : amount;
+}
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [persistedAdmin] = useState<CurrentUser | null>(() => {
-    const storedSession = window.localStorage.getItem(
-      ADMIN_SESSION_STORAGE_KEY
-    );
-
-    if (!storedSession) return null;
-
-    try {
-      const user = JSON.parse(storedSession) as CurrentUser;
-      return user.role === "admin" ? user : null;
-    } catch {
-      window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
-      return null;
-    }
-  });
-  const [currentView, setCurrentView] = useState(() =>
-    persistedAdmin && getViewFromPath(window.location.pathname) === "login_admin"
-      ? "admin_dashboard"
-      : getViewFromPath(window.location.pathname)
-  );
-  const [userRole, setUserRole] = useState<UserRole>(
-    persistedAdmin?.role ?? "guest"
-  );
-  const [currentUser, setCurrentUser] =
-    useState<CurrentUser | null>(persistedAdmin);
-
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [currentView, setCurrentView] = useState(() => getViewFromPath(window.location.pathname));
+  const [userRole, setUserRole] = useState<UserRole>("guest");
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [language, setLanguage] = useState<Language>("id");
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-
   const [applications, setApplications] = useState<Application[]>([]);
+  const [applicationsLoading, setApplicationsLoading] = useState(true);
+  const [applicationsError, setApplicationsError] = useState<string | null>(null);
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
-
   const [messages, setMessages] = useState<AppMessage[]>([]);
-  const [alerts, setAlerts] = useState<SystemAlert[]>(initialAlerts);
-
+  const [alerts, setAlerts] = useState<SystemAlert[]>([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [activeChatRecipient, setActiveChatRecipient] =
-    useState<CurrentUser | null>(null);
+  const [activeChatRecipient, setActiveChatRecipient] = useState<CurrentUser | null>(null);
+  const [pendingPaymentPlan, setPendingPaymentPlan] = useState<PendingPaymentPlan | null>(null);
+  const [latestTransaction, setLatestTransaction] = useState<PaymentTransaction | null>(null);
 
-  const loginAs = useCallback((user: CurrentUser) => {
+  useEffect(() => {
+    let active = true;
+    void apiRequest<{ user: CurrentUser }>("/auth/me")
+      .then(({ user }) => {
+        if (!active) return;
+        setCurrentUser(user);
+        setUserRole(user.role);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        if (error instanceof ApiClientError && error.status === 401) return;
+        setApiError(errorMessage(error));
+      })
+      .finally(() => {
+        if (active) setAuthReady(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (!authReady) {
+      return () => {
+        active = false;
+      };
+    }
+
+    if (!currentUser) {
+      setProjects([]);
+      setProjectsError(null);
+      setProjectsLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setProjects([]);
+    setProjectsError(null);
+    setProjectsLoading(true);
+    const loadProjects = async () => {
+      try {
+        const path = currentUser.role === "student"
+          ? "/projects/recommendations"
+          : "/projects";
+        const { projects: publicProjects } = await apiRequest<{ projects: Project[] }>(path);
+        let allProjects = publicProjects;
+
+        if (currentUser.role === "company") {
+          const { projects: ownedProjects } = await apiRequest<{ projects: Project[] }>("/projects/mine");
+          allProjects = [...ownedProjects, ...publicProjects.filter(
+            (project) => !ownedProjects.some((owned) => owned.id === project.id)
+          )];
+        } else if (currentUser.role === "admin") {
+          const { projects: pendingProjects } = await apiRequest<{ projects: Project[] }>("/projects/admin/pending");
+          allProjects = [...pendingProjects, ...publicProjects];
+        }
+
+        if (active) setProjects(allProjects);
+      } catch (error) {
+        if (active) {
+          setProjectsError(errorMessage(error));
+          setApiError(errorMessage(error));
+        }
+      } finally {
+        if (active) setProjectsLoading(false);
+      }
+    };
+    void loadProjects();
+    return () => {
+      active = false;
+    };
+  }, [authReady, currentUser?.id, currentUser?.role]);
+
+  useEffect(() => {
+    let active = true;
+    const loadApplications = async () => {
+      if (!authReady) return;
+      if (!currentUser || (currentUser.role !== "student" && currentUser.role !== "company")) {
+        setApplications([]);
+        setApplicationsError(null);
+        setApplicationsLoading(false);
+        return;
+      }
+      setApplications([]);
+      setApplicationsError(null);
+      setApplicationsLoading(true);
+      try {
+        const path = currentUser.role === "student" ? "/applications/mine" : "/applications/company";
+        const { applications: results } = await apiRequest<{ applications: Application[] }>(path);
+        if (active) setApplications(results);
+      } catch (error) {
+        if (active) {
+          setApplicationsError(errorMessage(error));
+          setApiError(errorMessage(error));
+        }
+      } finally {
+        if (active) setApplicationsLoading(false);
+      }
+    };
+    void loadApplications();
+    return () => {
+      active = false;
+    };
+  }, [authReady, currentUser?.id, currentUser?.role]);
+
+  const loginWithPassword = useCallback(async (
+    email: string,
+    password: string,
+    role: UserRole
+  ) => {
+    const { user } = await apiJson<{ user: CurrentUser }>("/auth/login", "POST", {
+      email,
+      password,
+      role,
+    });
     setCurrentUser(user);
     setUserRole(user.role);
+    setApiError(null);
+    setCurrentView(user.role === "admin"
+      ? "admin_dashboard"
+      : user.role === "company"
+        ? "company_dashboard"
+        : "student_dashboard");
+  }, []);
 
-    if (user.role === "admin") {
-      window.localStorage.setItem(
-        ADMIN_SESSION_STORAGE_KEY,
-        JSON.stringify(user)
-      );
-      setCurrentView("admin_dashboard");
-    } else if (user.role === "company") {
-      window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
-      setCurrentView("company_dashboard");
-    } else {
-      window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
-      setCurrentView("student_dashboard");
+  const registerAccount = useCallback(async (input: RegistrationInput) => {
+    await apiJson<{ message: string }>("/auth/register", "POST", input);
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await apiRequest<void>("/auth/logout", { method: "POST" });
+    } catch (error) {
+      setApiError(errorMessage(error));
+    } finally {
+      setCurrentUser(null);
+      setUserRole("guest");
+      setProjects([]);
+      setProjectsLoading(false);
+      setProjectsError(null);
+      setApplications([]);
+      setApplicationsLoading(false);
+      setApplicationsError(null);
+      setIsChatOpen(false);
+      setActiveChatRecipient(null);
+      setSelectedApplicationId(null);
+      setCurrentView("landing");
     }
   }, []);
 
-  const logout = useCallback(() => {
-    window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
-    setCurrentUser(null);
-    setUserRole("guest");
-    setIsChatOpen(false);
-    setActiveChatRecipient(null);
-    setSelectedApplicationId(null);
-    setCurrentView("landing");
+  const submitApplication = useCallback(async (
+    input: SubmitApplicationInput
+  ): Promise<Application> => {
+    const { application } = await apiJson<{ application: Application }>("/applications", "POST", {
+      projectId: input.projectId,
+      semester: input.semester,
+      motivation: input.motivation,
+      relevantExperience: input.relevantExperience,
+      portfolioUrl: input.portfolioUrl,
+      linkedinUrl: input.linkedinUrl,
+    });
+    setApplications((previous) => [application, ...previous]);
+    setSelectedApplicationId(application.id);
+    return application;
   }, []);
 
-  const submitApplication = useCallback(
-    (input: SubmitApplicationInput): Application | null => {
-      if (!currentUser || currentUser.role !== "student") return null;
-
-      const project = projects.find((item) => item.id === input.projectId);
-      if (!project) return null;
-
-      const duplicate = applications.find(
-        (item) =>
-          item.projectId === project.id &&
-          item.studentId === currentUser.id
-      );
-
-      if (duplicate) {
-        setSelectedApplicationId(duplicate.id);
-        return null;
-      }
-
-      const application: Application = {
-        id: `application-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        projectId: project.id,
-        projectTitle: project.title,
-        companyName: project.company,
-        companyId: project.companyId,
-        studentId: currentUser.id,
-        studentName: input.fullName.trim(),
-        studentEmail: input.email.trim(),
-        studentMajor: input.studyProgram.trim(),
-        studentUniversity: input.university.trim(),
-        phone: input.phone.trim(),
-        semester: input.semester,
-        motivation: input.motivation.trim(),
-        relevantExperience: input.relevantExperience.trim(),
-        portfolioUrl: input.portfolioUrl.trim(),
-        linkedinUrl: input.linkedinUrl.trim(),
-        status: "submitted",
-        submittedAt: new Date().toISOString(),
-        deliverables: [],
-      };
-
-      setApplications((previous) => [application, ...previous]);
-      setSelectedApplicationId(application.id);
-
-      setAlerts((previous) => [
-        {
-          id: `alert-${Date.now()}`,
-          title: "Lamaran berhasil dikirim",
-          detail: `Lamaran untuk ${project.title} telah tercatat.`,
-          timeAgo: "Baru saja",
-          type: "success",
-        },
-        ...previous,
-      ]);
-
-      return application;
-    },
-    [applications, currentUser, projects]
-  );
-
-  const updateApplicationStatus = useCallback(
-    (id: string, status: ApplicationStatus) => {
-      setApplications((previous) =>
-        previous.map((application) =>
-          application.id === id ? { ...application, status } : application
-        )
-      );
-    },
-    []
-  );
+  const updateApplicationStatus = useCallback(async (
+    id: string,
+    status: ApplicationStatus
+  ) => {
+    await apiJson(`/applications/${encodeURIComponent(id)}/status`, "PATCH", { status });
+    setApplications((previous) => previous.map((application) =>
+      application.id === id ? { ...application, status } : application
+    ));
+  }, []);
 
   const submitRating = useCallback((id: string, rating: RatingInput) => {
-    setApplications((previous) =>
-      previous.map((application) =>
-        application.id === id
-          ? {
-              ...application,
-              status: "completed",
-              rating: {
-                ...rating,
-                feedbackText: rating.feedbackText.trim(),
-                submittedAt: new Date().toISOString(),
-              },
-            }
-          : application
-      )
-    );
+    setApplications((previous) => previous.map((application) =>
+      application.id === id
+        ? {
+            ...application,
+            status: "completed",
+            rating: {
+              ...rating,
+              feedbackText: rating.feedbackText.trim(),
+              submittedAt: new Date().toISOString(),
+            },
+          }
+        : application
+    ));
   }, []);
 
-  const sendMessage = useCallback(
-    (recipientName: string, text: string) => {
-      const cleanText = text.trim();
-      if (!cleanText || !currentUser) return;
+  const sendMessage = useCallback((recipientName: string, text: string) => {
+    const cleanText = text.trim();
+    if (!cleanText || !currentUser) return;
 
-      const recipient = activeChatRecipient ?? {
-        id: `contact-${recipientName.toLowerCase().replace(/\s+/g, "-")}`,
-        name: recipientName,
-        email: "",
-        role: "company" as UserRole,
-      };
+    const recipient = activeChatRecipient ?? {
+      id: `contact-${recipientName.toLowerCase().replace(/\s+/g, "-")}`,
+      name: recipientName,
+      email: "",
+      role: "company" as UserRole,
+    };
+    const message: AppMessage = {
+      id: `message-${Date.now()}`,
+      senderId: currentUser.id,
+      senderName: currentUser.name,
+      recipientId: recipient.id,
+      recipientName: recipient.name,
+      avatar: currentUser.avatar,
+      text: cleanText,
+      timestamp: new Date().toISOString(),
+      isUnread: false,
+    };
+    setMessages((previous) => [...previous, message]);
+  }, [activeChatRecipient, currentUser]);
 
-      const newMessage: AppMessage = {
-        id: `message-${Date.now()}`,
-        senderId: currentUser.id,
-        senderName: currentUser.name,
-        recipientId: recipient.id,
-        recipientName: recipient.name,
-        avatar: currentUser.avatar,
-        text: cleanText,
-        timestamp: new Date().toISOString(),
-        isUnread: false,
-      };
-
-      setMessages((previous) => [...previous, newMessage]);
-    },
-    [activeChatRecipient, currentUser]
-  );
-
-  const approveProject = useCallback((id: string) => {
-    setProjects((previous) =>
-      previous.map((project) =>
-        project.id === id ? { ...project, status: "approved" } : project
-      )
-    );
-    setAlerts((previous) => [
-      {
-        id: `alert-${Date.now()}`,
-        title: "Proyek disetujui",
-        detail: `Proyek dengan ID ${id} telah disetujui.`,
-        timeAgo: "Baru saja",
-        type: "success",
-      },
-      ...previous,
-    ]);
+  const approveProject = useCallback(async (id: string) => {
+    await apiJson(`/projects/${encodeURIComponent(id)}/approval`, "PATCH", { status: "approved" });
+    setProjects((previous) => previous.map((project) =>
+      project.id === id ? { ...project, status: "approved" } : project
+    ));
   }, []);
 
-  const rejectProject = useCallback((id: string) => {
-    setProjects((previous) =>
-      previous.map((project) =>
-        project.id === id ? { ...project, status: "rejected" } : project
-      )
-    );
+  const rejectProject = useCallback(async (id: string) => {
+    await apiJson(`/projects/${encodeURIComponent(id)}/approval`, "PATCH", { status: "rejected" });
+    setProjects((previous) => previous.map((project) =>
+      project.id === id ? { ...project, status: "rejected" } : project
+    ));
   }, []);
 
-  const addProject = useCallback(
-    (project: Omit<Project, "id" | "createdAt" | "status">) => {
-      if (!currentUser || currentUser.role !== "company") return;
+  const addProject = useCallback(async (
+    project: Omit<Project, "id" | "createdAt" | "status">
+  ): Promise<Project> => {
+    const { project: saved } = await apiJson<{ project: Project }>("/projects", "POST", {
+      title: project.title,
+      category: project.category,
+      description: project.description,
+      durationWeeks: project.durationWeeks ?? durationInWeeks(project.duration),
+      location: project.location,
+      stipend: project.stipend,
+      skillsRequired: project.skillsRequired,
+    });
+    setProjects((previous) => [saved, ...previous]);
+    return saved;
+  }, []);
 
-      const newProject: Project = {
-        ...project,
-        company: currentUser.companyName || currentUser.name,
-        companyId: currentUser.id,
-        id: `project-${Date.now()}`,
-        status: "pending",
-        createdAt: new Date().toISOString(),
-      };
+  const createTransaction = useCallback(async (
+    plan: PremiumPlanId,
+    method: PaymentMethod,
+    proof: File
+  ): Promise<PaymentTransaction> => {
+    const { transaction } = await apiJson<{ transaction: PaymentTransaction }>(
+      "/transactions",
+      "POST",
+      { plan, method }
+    );
+    const proofResult = await apiUpload<{ proofFileId: string; status: "pending" }>(
+      `/transactions/${encodeURIComponent(transaction.id)}/proof`,
+      proof
+    );
+    const completed = {
+      ...transaction,
+      proofFileId: proofResult.proofFileId,
+      status: "pending" as const,
+    };
+    setLatestTransaction(completed);
+    return completed;
+  }, []);
 
-      setProjects((previous) => [newProject, ...previous]);
-    },
-    [currentUser]
-  );
+  const reviewTransaction = useCallback(async (
+    id: string,
+    status: "verified" | "rejected"
+  ) => {
+    await apiJson(`/transactions/${encodeURIComponent(id)}/review`, "PATCH", { status });
+    setLatestTransaction((previous) => previous?.id === id
+      ? { ...previous, status }
+      : previous);
+  }, []);
 
   const clearAlerts = useCallback(() => setAlerts([]), []);
-
-  const getSkillMatch = useCallback(
-    (project: Project, skills?: string[]) => {
-      const studentSkills = (skills ?? currentUser?.skills ?? []).map(
-        (skill) => skill.trim().toLowerCase()
-      );
-
-      if (project.skillsRequired.length === 0) return 100;
-      if (studentSkills.length === 0) return 0;
-
-      const matches = project.skillsRequired.filter((required) =>
-        studentSkills.includes(required.trim().toLowerCase())
-      ).length;
-
-      return Math.round((matches / project.skillsRequired.length) * 100);
-    },
-    [currentUser]
+  const getMyApplications = useCallback(
+    () => currentUser
+      ? applications.filter((application) => application.studentId === currentUser.id)
+      : [],
+    [applications, currentUser]
+  );
+  const getCompanyProjects = useCallback(
+    () => currentUser?.role === "company"
+      ? projects.filter((project) => project.companyId === currentUser.id)
+      : [],
+    [projects, currentUser]
+  );
+  const getCompanyApplications = useCallback(
+    () => currentUser?.role === "company"
+      ? applications.filter((application) => application.companyId === currentUser.id)
+      : [],
+    [applications, currentUser]
   );
 
-  const getMyApplications = useCallback(() => {
-    if (!currentUser) return [];
-    return applications.filter(
-      (application) => application.studentId === currentUser.id
-    );
-  }, [applications, currentUser]);
+  const value = useMemo<AppContextType>(() => ({
+    currentView,
+    setCurrentView,
+    userRole,
+    setUserRole,
+    currentUser,
+    setCurrentUser,
+    authReady,
+    apiError,
+    language,
+    setLanguage,
+    projects,
+    setProjects,
+    projectsLoading,
+    projectsError,
+    selectedProjectId,
+    setSelectedProjectId,
+    applications,
+    setApplications,
+    applicationsLoading,
+    applicationsError,
+    selectedApplicationId,
+    setSelectedApplicationId,
+    messages,
+    setMessages,
+    alerts,
+    setAlerts,
+    isChatOpen,
+    setIsChatOpen,
+    activeChatRecipient,
+    setActiveChatRecipient,
+    pendingPaymentPlan,
+    setPendingPaymentPlan,
+    latestTransaction,
+    loginWithPassword,
+    registerAccount,
+    logout,
+    submitApplication,
+    updateApplicationStatus,
+    submitRating,
+    sendMessage,
+    approveProject,
+    rejectProject,
+    addProject,
+    createTransaction,
+    reviewTransaction,
+    clearAlerts,
+    getMyApplications,
+    getCompanyProjects,
+    getCompanyApplications,
+  }), [
+    currentView,
+    userRole,
+    currentUser,
+    authReady,
+    apiError,
+    language,
+    projects,
+    projectsLoading,
+    projectsError,
+    selectedProjectId,
+    applications,
+    applicationsLoading,
+    applicationsError,
+    selectedApplicationId,
+    messages,
+    alerts,
+    isChatOpen,
+    activeChatRecipient,
+    pendingPaymentPlan,
+    latestTransaction,
+    loginWithPassword,
+    registerAccount,
+    logout,
+    submitApplication,
+    updateApplicationStatus,
+    submitRating,
+    sendMessage,
+    approveProject,
+    rejectProject,
+    addProject,
+    createTransaction,
+    reviewTransaction,
+    clearAlerts,
+    getMyApplications,
+    getCompanyProjects,
+    getCompanyApplications,
+  ]);
 
-  const getCompanyProjects = useCallback(() => {
-    if (!currentUser || currentUser.role !== "company") return [];
-
-    return projects.filter(
-      (project) =>
-        project.companyId === currentUser.id ||
-        (!project.companyId &&
-          project.company === (currentUser.companyName || currentUser.name))
-    );
-  }, [projects, currentUser]);
-
-  const getCompanyApplications = useCallback(() => {
-    if (!currentUser || currentUser.role !== "company") return [];
-
-    const companyProjectIds = getCompanyProjects().map((project) => project.id);
-
-    return applications.filter(
-      (application) =>
-        application.companyId === currentUser.id ||
-        companyProjectIds.includes(application.projectId)
-    );
-  }, [applications, currentUser, getCompanyProjects]);
-
-  const value = useMemo<AppContextType>(
-    () => ({
-      currentView,
-      setCurrentView,
-      userRole,
-      setUserRole,
-      currentUser,
-      setCurrentUser,
-      projects,
-      setProjects,
-      selectedProjectId,
-      setSelectedProjectId,
-      applications,
-      setApplications,
-      selectedApplicationId,
-      setSelectedApplicationId,
-      messages,
-      setMessages,
-      alerts,
-      setAlerts,
-      isChatOpen,
-      setIsChatOpen,
-      activeChatRecipient,
-      setActiveChatRecipient,
-      loginAs,
-      logout,
-      submitApplication,
-      updateApplicationStatus,
-      submitRating,
-      sendMessage,
-      approveProject,
-      rejectProject,
-      addProject,
-      clearAlerts,
-      getSkillMatch,
-      getMyApplications,
-      getCompanyProjects,
-      getCompanyApplications,
-    }),
-    [
-      currentView,
-      userRole,
-      currentUser,
-      projects,
-      selectedProjectId,
-      applications,
-      selectedApplicationId,
-      messages,
-      alerts,
-      isChatOpen,
-      activeChatRecipient,
-      loginAs,
-      logout,
-      submitApplication,
-      updateApplicationStatus,
-      submitRating,
-      sendMessage,
-      approveProject,
-      rejectProject,
-      addProject,
-      clearAlerts,
-      getSkillMatch,
-      getMyApplications,
-      getCompanyProjects,
-      getCompanyApplications,
-    ]
-  );
-
-  return (
-    <AppContext.Provider value={value}>
-      {children}
-    </AppContext.Provider>
-  );
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
 export function useApp(): AppContextType {
   const context = useContext(AppContext);
-
-  if (!context) {
-    throw new Error("useApp harus digunakan di dalam komponen AppProvider.");
-  }
-
+  if (!context) throw new Error("useApp harus digunakan di dalam komponen AppProvider.");
   return context;
 }

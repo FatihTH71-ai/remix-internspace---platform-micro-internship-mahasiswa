@@ -9,6 +9,7 @@ import {
   Sparkles,
   CheckCircle2,
   LoaderCircle,
+  Github,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 
@@ -22,7 +23,7 @@ const AuthPage: React.FC<AuthPageProps> = ({
   initialTab = "student",
 }) => {
   const {
-    loginAs,
+    loginWithPassword,
     setCurrentView,
     language,
     setLanguage,
@@ -109,14 +110,14 @@ const AuthPage: React.FC<AuthPageProps> = ({
     setError("");
   };
 
-  const handleLogin = (
+  const handleLogin = async (
     event: React.FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
     setError("");
 
     const cleanEmail = email.trim();
-    const cleanPassword = password.trim();
+    const cleanPassword = password;
 
     if (!cleanEmail || !cleanPassword) {
       setError(content.required);
@@ -131,32 +132,10 @@ const AuthPage: React.FC<AuthPageProps> = ({
     setLoading(true);
 
     try {
-      /*
-       * LOGIN DEMO
-       *
-       * Nama diambil dari bagian email sebelum @.
-       * Contoh: budi.santoso@gmail.com menjadi Budi Santoso.
-       *
-       * Ini bukan autentikasi server. Untuk produksi,
-       * ambil nama dan role dari data akun yang terverifikasi.
-       */
-      const emailPrefix = cleanEmail.split("@")[0];
-
-      const displayName = emailPrefix
-        .replace(/[._-]+/g, " ")
-        .replace(/\b\w/g, (character) =>
-          character.toUpperCase()
-        );
-
-      loginAs({
-        id: `${activeTab}-${cleanEmail.toLowerCase()}`,
-        name: displayName,
-        email: cleanEmail,
-        role: activeTab,
-      });
+      await loginWithPassword(cleanEmail, cleanPassword, activeTab);
     } catch (loginError) {
       console.error("Login error:", loginError);
-      setError(content.failed);
+      setError(loginError instanceof Error ? loginError.message : content.failed);
     } finally {
       setLoading(false);
     }
@@ -400,6 +379,7 @@ const AuthPage: React.FC<AuthPageProps> = ({
                     id="login-password"
                     name="password"
                     type={showPassword ? "text" : "password"}
+                    minLength={8}
                     autoComplete="current-password"
                     placeholder={content.passwordPlaceholder}
                     value={password}
@@ -460,6 +440,32 @@ const AuthPage: React.FC<AuthPageProps> = ({
                 )}
               </button>
             </form>
+
+            <div className="mt-6">
+              <div className="mb-4 flex items-center gap-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                <span className="h-px flex-1 bg-slate-200" />
+                <span>or continue with</span>
+                <span className="h-px flex-1 bg-slate-200" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => window.location.assign(`/api/v1/auth/oauth/google?role=${activeTab}`)}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  <span className="font-bold text-blue-600">G</span>
+                  Google
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.location.assign(`/api/v1/auth/oauth/github?role=${activeTab}`)}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  <Github size={17} />
+                  GitHub
+                </button>
+              </div>
+            </div>
 
             {/* DAFTAR */}
             <div className="mt-7 text-center">

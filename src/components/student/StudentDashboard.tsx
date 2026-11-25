@@ -20,11 +20,14 @@ const StudentDashboard: React.FC = () => {
     currentUser,
     language,
     projects,
+    projectsLoading,
+    projectsError,
     applications,
+    applicationsLoading,
+    applicationsError,
     setCurrentView,
     setSelectedProjectId,
     setSelectedApplicationId,
-    getSkillMatch,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,6 +92,12 @@ const StudentDashboard: React.FC = () => {
     noProjectsDescription: isId
       ? "Coba gunakan kata kunci lain atau hapus pencarian."
       : "Try another keyword or clear your search.",
+    noAvailableProjects: isId ? "Belum ada proyek tersedia" : "No projects available yet",
+    noAvailableProjectsDescription: isId
+      ? "Proyek yang disetujui perusahaan akan muncul di sini."
+      : "Company projects will appear here after they are approved.",
+    loading: isId ? "Memuat data dari server..." : "Loading dashboard data...",
+    loadError: isId ? "Data tidak dapat dimuat." : "Dashboard data could not be loaded.",
     clearSearch: isId ? "Hapus Pencarian" : "Clear Search",
     sent: isId ? "Dikirim" : "Submitted",
     viewDetails: isId ? "Lihat Detail" : "View Details",
@@ -125,7 +134,7 @@ const StudentDashboard: React.FC = () => {
   const approvedProjects = useMemo(
     () =>
       projects.filter(
-        (project) => !project.status || project.status === "approved"
+        (project) => project.status === "approved"
       ),
     [projects]
   );
@@ -133,8 +142,7 @@ const StudentDashboard: React.FC = () => {
   const filteredProjects = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    return approvedProjects
-      .filter((project) => {
+    return approvedProjects.filter((project) => {
         if (!query) return true;
 
         const searchableText = [
@@ -148,10 +156,8 @@ const StudentDashboard: React.FC = () => {
           .toLowerCase();
 
         return searchableText.includes(query);
-      })
-      .sort((a, b) => getSkillMatch(b) - getSkillMatch(a))
-      .slice(0, 6);
-  }, [approvedProjects, searchQuery, getSkillMatch]);
+      }).slice(0, 6);
+  }, [approvedProjects, searchQuery]);
 
   const acceptedCount = myApplications.filter(
     (application) =>
@@ -285,7 +291,7 @@ const StudentDashboard: React.FC = () => {
             <SummaryCard
               icon={<BriefcaseBusiness size={22} />}
               label={t.opportunities}
-              value={String(approvedProjects.length)}
+              value={projectsLoading || projectsError ? "—" : String(approvedProjects.length)}
               description={t.availableProjects}
               color="blue"
             />
@@ -293,7 +299,7 @@ const StudentDashboard: React.FC = () => {
             <SummaryCard
               icon={<FileText size={22} />}
               label={t.myApplications}
-              value={String(myApplications.length)}
+              value={applicationsLoading || applicationsError ? "—" : String(myApplications.length)}
               description={t.applicationsSent}
               color="violet"
             />
@@ -301,7 +307,7 @@ const StudentDashboard: React.FC = () => {
             <SummaryCard
               icon={<CheckCircle2 size={22} />}
               label={t.accepted}
-              value={String(acceptedCount)}
+              value={applicationsLoading || applicationsError ? "—" : String(acceptedCount)}
               description={t.acceptedDescription}
               color="emerald"
             />
@@ -309,7 +315,7 @@ const StudentDashboard: React.FC = () => {
             <SummaryCard
               icon={<Clock size={22} />}
               label={t.inProgress}
-              value={String(inProgressCount)}
+              value={applicationsLoading || applicationsError ? "—" : String(inProgressCount)}
               description={t.inProgressDescription}
               color="amber"
             />
@@ -347,7 +353,7 @@ const StudentDashboard: React.FC = () => {
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                {t.myApplications} ({myApplications.length})
+                {t.myApplications} ({applicationsLoading || applicationsError ? "—" : myApplications.length})
               </button>
             </div>
           </div>
@@ -368,10 +374,14 @@ const StudentDashboard: React.FC = () => {
                 />
               </div>
 
-              {filteredProjects.length > 0 ? (
+              {projectsLoading ? (
+                <DashboardNotice>{t.loading}</DashboardNotice>
+              ) : projectsError ? (
+                <DashboardNotice isError>{projectsError || t.loadError}</DashboardNotice>
+              ) : filteredProjects.length > 0 ? (
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
                   {filteredProjects.map((project) => {
-                    const match = getSkillMatch(project);
+                    const match = project.skillMatchPercent ?? 0;
 
                     return (
                       <article
@@ -482,6 +492,11 @@ const StudentDashboard: React.FC = () => {
                     );
                   })}
                 </div>
+              ) : approvedProjects.length === 0 ? (
+                <DashboardNotice>
+                  <h3 className="font-semibold text-slate-700">{t.noAvailableProjects}</h3>
+                  <p className="mt-2">{t.noAvailableProjectsDescription}</p>
+                </DashboardNotice>
               ) : (
                 <EmptyState
                   title={t.noProjects}
@@ -493,7 +508,11 @@ const StudentDashboard: React.FC = () => {
             </>
           ) : (
             <div className="space-y-4">
-              {myApplications.length > 0 ? (
+              {applicationsLoading ? (
+                <DashboardNotice>{t.loading}</DashboardNotice>
+              ) : applicationsError ? (
+                <DashboardNotice isError>{applicationsError || t.loadError}</DashboardNotice>
+              ) : myApplications.length > 0 ? (
                 myApplications.map((application) => (
                   <article
                     key={application.id}
@@ -650,6 +669,22 @@ const EmptyState: React.FC<{
     >
       {actionLabel}
     </button>
+  </div>
+);
+
+const DashboardNotice: React.FC<{
+  children: React.ReactNode;
+  isError?: boolean;
+}> = ({ children, isError = false }) => (
+  <div
+    role={isError ? "alert" : "status"}
+    className={`rounded-2xl border px-6 py-10 text-center text-sm ${
+      isError
+        ? "border-red-200 bg-red-50 text-red-700"
+        : "border-dashed border-slate-300 bg-white text-slate-500"
+    }`}
+  >
+    {children}
   </div>
 );
 

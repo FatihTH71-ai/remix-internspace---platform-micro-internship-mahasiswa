@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Sparkles,
   CheckCircle2,
@@ -12,25 +12,55 @@ import {
   Award,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { apiRequest } from '../../lib/api';
 
 type PlanType = 'student' | 'company';
+type PremiumPlanId = 'student_premium' | 'company_premium';
 
 export const PremiumPricingPage: React.FC = () => {
-  const { setCurrentView, setPendingPaymentPlan } = useApp();
-  const [activePlanTab, setActivePlanTab] = useState<PlanType>('student');
+  const { currentUser, setCurrentView, setPendingPaymentPlan } = useApp();
+  const [activePlanTab, setActivePlanTab] = useState<PlanType>(
+    currentUser?.role === 'company' ? 'company' : 'student'
+  );
+  const [prices, setPrices] = useState<Partial<Record<PremiumPlanId, number>>>({});
+  const [priceError, setPriceError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    void apiRequest<{ plans: Array<{ id: PremiumPlanId; amount: number }> }>('/transactions/plans')
+      .then(({ plans }) => {
+        if (!active) return;
+        setPrices(Object.fromEntries(plans.map((plan) => [plan.id, plan.amount])));
+      })
+      .catch((error: unknown) => {
+        if (active) setPriceError(error instanceof Error ? error.message : 'Unable to load current plan prices.');
+      });
+    return () => { active = false; };
+  }, []);
+
+  const formatPrice = (planId: PremiumPlanId) => {
+    const amount = prices[planId];
+    if (amount === undefined) return 'Loading price…';
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
   const handleSelectPlan = (
+    id: 'student_premium' | 'company_premium',
     name: string,
-    price: number,
     type: PlanType
   ) => {
-    setPendingPaymentPlan({ name, price, type });
+    setPendingPaymentPlan({ id, name, type });
     setCurrentView('payment_checkout');
   };
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl space-y-10">
+        {priceError && <p role="alert" className="mx-auto max-w-2xl rounded-xl bg-red-50 p-3 text-center text-sm text-red-700">{priceError}</p>}
         {/* HEADER */}
         <header className="mx-auto max-w-2xl space-y-3 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 text-blue-700">
@@ -136,7 +166,7 @@ export const PremiumPricingPage: React.FC = () => {
 
                 <div className="mt-4">
                   <span className="text-4xl font-extrabold">
-                    Rp 35.000
+                    {formatPrice('student_premium')}
                   </span>
                   <span className="ml-1 text-xs text-blue-200">
                     / bulan
@@ -173,8 +203,8 @@ export const PremiumPricingPage: React.FC = () => {
                 type="button"
                 onClick={() =>
                   handleSelectPlan(
+                    'student_premium',
                     'InternSpace Student Premium',
-                    35000,
                     'student'
                   )
                 }
@@ -234,7 +264,7 @@ export const PremiumPricingPage: React.FC = () => {
 
                 <div className="mt-4">
                   <span className="text-3xl font-extrabold">
-                    Rp 400.000
+                    {formatPrice('company_premium')}
                   </span>
                   <span className="ml-1 text-xs text-slate-400">
                     / bulan
@@ -258,14 +288,14 @@ export const PremiumPricingPage: React.FC = () => {
                 type="button"
                 onClick={() =>
                   handleSelectPlan(
+                    'company_premium',
                     'InternSpace Company Premium',
-                    400000,
                     'company'
                   )
                 }
                 className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
               >
-                Langganan Rp 400.000 / Bulan
+                Langganan Perusahaan Premium / Bulan
               </button>
             </div>
 
@@ -290,8 +320,8 @@ export const PremiumPricingPage: React.FC = () => {
                       <span className="text-sm font-bold text-slate-800">
                         Featured Project
                       </span>
-                      <span className="text-xs font-bold text-blue-600">
-                        Rp 75.000
+                      <span className="text-xs font-bold text-slate-500">
+                        Coming soon
                       </span>
                     </div>
                     <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -304,8 +334,8 @@ export const PremiumPricingPage: React.FC = () => {
                       <span className="text-sm font-bold text-slate-800">
                         Banner Iklan Web
                       </span>
-                      <span className="text-xs font-bold text-blue-600">
-                        Rp 250.000
+                      <span className="text-xs font-bold text-slate-500">
+                        Coming soon
                       </span>
                     </div>
                     <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -317,16 +347,10 @@ export const PremiumPricingPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() =>
-                  handleSelectPlan(
-                    'Featured Project Add-on',
-                    75000,
-                    'company'
-                  )
-                }
-                className="w-full rounded-xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700 transition hover:bg-blue-100"
+                disabled
+                className="w-full cursor-not-allowed rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-500"
               >
-                Beli Add-on Promosi
+                Add-on payment is not available yet
               </button>
             </div>
           </section>

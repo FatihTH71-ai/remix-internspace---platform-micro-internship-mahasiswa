@@ -15,6 +15,12 @@ import { Footer } from "./components/common/Footer";
 // AUTH
 import { AuthPage } from "./components/auth/AuthPage";
 import { LoginAdminPage } from "./components/auth/LoginAdminPage";
+import {
+  ForgotPasswordPage,
+  RegistrationPage,
+  ResetPasswordPage,
+  VerifyEmailPage,
+} from "./components/auth/AccountActionPages";
 
 // LANDING
 import { LandingPage } from "./components/landing/LandingPage";
@@ -39,6 +45,7 @@ import { CompanyHiredWorkspace } from "./components/company/CompanyHiredWorkspac
 
 // ADMIN
 import { AdminDashboard } from "./components/admin/AdminDashboard";
+import { AdminValidationsPage } from "./components/admin/AdminValidationsPage";
 import { StudentsDirectory } from "./components/admin/StudentsDirectory";
 import { PartnerCompanies } from "./components/admin/PartnerCompanies";
 
@@ -50,6 +57,11 @@ const AUTH_VIEWS = [
   "login_student",
   "login_company",
   "login",
+  "register_student",
+  "register_company",
+  "forgot_password",
+  "reset_password",
+  "verify_email",
 ];
 
 const STUDENT_VIEWS = [
@@ -69,11 +81,9 @@ const COMPANY_VIEWS = [
   "candidate_profile",
   "rating_feedback",
   "certificate",
-  "premium",
-  "payment",
-  "payment_checkout",
-  "payment_success",
 ];
+
+const PREMIUM_VIEWS = ["premium", "payment", "payment_checkout", "payment_success"];
 
 const ADMIN_VIEWS = [
   "admin_control",
@@ -89,6 +99,7 @@ const AppContent: React.FC = () => {
     setCurrentView,
     currentUser,
     userRole,
+    authReady,
   } = useApp();
 
   const isGuest = !currentUser || userRole === "guest";
@@ -96,12 +107,13 @@ const AppContent: React.FC = () => {
   const isAuthPage =
     AUTH_VIEWS.includes(currentView) ||
     (isGuest && ADMIN_VIEWS.includes(currentView));
-  const hasOwnAdminShell = currentView === "students_directory" || currentView === "invite_student";
+  const hasOwnAdminShell = currentView === "admin_control" || currentView === "students_directory" || currentView === "invite_student";
   const isLanding = currentView === "landing";
 
   const isProtectedView = [
     ...STUDENT_VIEWS,
     ...COMPANY_VIEWS,
+    ...PREMIUM_VIEWS,
     ...ADMIN_VIEWS,
   ].includes(currentView);
 
@@ -111,7 +123,7 @@ const AppContent: React.FC = () => {
     (userRole === "company" &&
       [...STUDENT_VIEWS, ...ADMIN_VIEWS].includes(currentView)) ||
     (userRole === "admin" &&
-      [...STUDENT_VIEWS, ...COMPANY_VIEWS].includes(currentView));
+      [...STUDENT_VIEWS, ...COMPANY_VIEWS, ...PREMIUM_VIEWS].includes(currentView));
 
   // BROWSER BACK / FORWARD
   useEffect(() => {
@@ -128,6 +140,7 @@ const AppContent: React.FC = () => {
 
   // PROTEKSI ROLE
   useEffect(() => {
+    if (!authReady) return;
     if (isGuest && isProtectedView) {
       setCurrentView(
         ADMIN_VIEWS.includes(currentView) ? "login_admin" : "login"
@@ -146,6 +159,7 @@ const AppContent: React.FC = () => {
     }
   }, [
     currentView,
+    authReady,
     isGuest,
     isProtectedView,
     roleIsUnauthorized,
@@ -165,6 +179,10 @@ const AppContent: React.FC = () => {
   }, [currentView]);
 
   const renderPage = (): React.ReactNode => {
+    if (!authReady && isProtectedView) {
+      return <div className="flex min-h-[60vh] items-center justify-center text-sm text-slate-500">Loading your session…</div>;
+    }
+
     if (isGuest && ADMIN_VIEWS.includes(currentView)) {
       return <LoginAdminPage />;
     }
@@ -196,6 +214,21 @@ const AppContent: React.FC = () => {
 
       case "login_company":
         return <AuthPage initialTab="company" />;
+
+      case "register_student":
+        return <RegistrationPage role="student" />;
+
+      case "register_company":
+        return <RegistrationPage role="company" />;
+
+      case "forgot_password":
+        return <ForgotPasswordPage />;
+
+      case "reset_password":
+        return <ResetPasswordPage />;
+
+      case "verify_email":
+        return <VerifyEmailPage />;
 
       // LANDING
       case "landing":
@@ -270,7 +303,7 @@ const AppContent: React.FC = () => {
 
       // ADMIN
       case "admin_control":
-        return <AdminDashboard initialTab="control" />;
+        return <AdminValidationsPage />;
 
       case "admin_dashboard":
         return <AdminDashboard initialTab="dashboard" />;

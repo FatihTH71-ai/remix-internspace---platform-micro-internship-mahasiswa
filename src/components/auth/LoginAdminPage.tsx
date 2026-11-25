@@ -3,33 +3,26 @@ import { useApp } from '../../context/AppContext';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 export const LoginAdminPage: React.FC = () => {
-  const { loginAs } = useApp();
+  const { loginWithPassword } = useApp();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
-
     const cleanEmail = email.trim().toLowerCase();
-    const validEmail = cleanEmail === 'admin@internspace.com';
-    const validPassword = password === 'admin123';
-
-    if (!validEmail || !validPassword) {
-      setError('Invalid admin e-mail or password.');
-      return;
+    setLoading(true);
+    try {
+      await loginWithPassword(cleanEmail, password, 'admin');
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : 'Unable to sign in.');
+    } finally {
+      setLoading(false);
     }
-
-    // Local demo only. For production, validate credentials on the backend.
-    loginAs({
-      id: `admin-${cleanEmail}`,
-      name: 'Administrator',
-      email: cleanEmail,
-      role: 'admin',
-    });
   };
 
   return (
@@ -51,7 +44,7 @@ export const LoginAdminPage: React.FC = () => {
           Log in to the system
         </h1>
 
-        <form onSubmit={handleSubmit} noValidate className="mt-8">
+        <form onSubmit={handleSubmit}         className="mt-8">
           {/* Admin e-mail */}
           <label
             htmlFor="admin-email"
@@ -94,6 +87,7 @@ export const LoginAdminPage: React.FC = () => {
             <input
               id="admin-password"
               type={showPassword ? 'text' : 'password'}
+              minLength={8}
               autoComplete="current-password"
               value={password}
               onChange={(event) => {
@@ -127,9 +121,10 @@ export const LoginAdminPage: React.FC = () => {
 
           <button
             type="submit"
+            disabled={loading}
             className="mt-6 h-[40px] w-full rounded-full bg-[#0077c8] text-[14px] font-bold text-white transition hover:bg-[#0069b3] focus:outline-none focus:ring-4 focus:ring-[#0077c8]/30"
           >
-            Log in
+            {loading ? 'Signing in…' : 'Log in'}
           </button>
         </form>
       </section>

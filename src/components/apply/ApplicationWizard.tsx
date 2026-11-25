@@ -64,7 +64,6 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
     setCurrentView,
     submitApplication,
     setSelectedApplicationId,
-    applications,
   } = useApp();
 
   const selectedProject =
@@ -230,7 +229,7 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
     }
   };
 
-  const handleSubmit = (event?: React.FormEvent) => {
+  const handleSubmit = async (event?: React.FormEvent) => {
     event?.preventDefault();
     setSubmitError("");
 
@@ -263,7 +262,7 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
     setIsSubmitting(true);
 
     try {
-      const result = submitApplication({
+      const result = await submitApplication({
         projectId: selectedProject.id,
         fullName: form.fullName,
         email: form.email,
@@ -284,29 +283,12 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
         return;
       }
 
-      const existingApplication = applications.find(
-        (application) =>
-          application.projectId === selectedProject.id &&
-          application.studentId === currentUser.id
-      );
-
-      if (existingApplication) {
-        setSubmittedApplicationId(existingApplication.id);
-        setSelectedApplicationId(existingApplication.id);
-        setSubmitError(
-          "Kamu sudah pernah melamar proyek ini. Lamaran yang lama dapat dilihat di dashboard."
-        );
-        goToStep(4);
-        return;
-      }
-
-      setSubmitError(
-        "Lamaran belum berhasil disimpan. Pastikan proyek masih tersedia dan akunmu valid."
-      );
     } catch (error) {
       console.error("Gagal mengirim lamaran:", error);
       setSubmitError(
-        "Terjadi kesalahan saat mengirim lamaran. Silakan coba lagi."
+        error instanceof Error
+          ? error.message
+          : "Terjadi kesalahan saat mengirim lamaran. Silakan coba lagi."
       );
     } finally {
       setIsSubmitting(false);

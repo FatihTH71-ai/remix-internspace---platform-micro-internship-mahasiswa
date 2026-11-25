@@ -18,7 +18,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 
-import { useApp } from "../../context/AppContext";
+import { durationInWeeks, useApp } from "../../context/AppContext";
 
 const CompanyDashboard: React.FC = () => {
   const {
@@ -32,6 +32,8 @@ const CompanyDashboard: React.FC = () => {
 
   const [showAddProject, setShowAddProject] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [formError, setFormError] = useState("");
+  const [isSubmittingProject, setIsSubmittingProject] = useState(false);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -95,45 +97,79 @@ const CompanyDashboard: React.FC = () => {
     }));
   };
 
-  const handleAddProject = (event: React.FormEvent) => {
+  const handleAddProject = async (event: React.FormEvent) => {
     event.preventDefault();
+    setFormError("");
 
-    if (
-      !formData.title.trim() ||
-      !formData.description.trim() ||
-      !formData.skillsRequired.trim()
-    ) {
-      alert("Mohon lengkapi informasi proyek terlebih dahulu.");
+    const title = formData.title.trim();
+    const description = formData.description.trim();
+    const skillsRequired = formData.skillsRequired
+      .split(",")
+      .map((skill) => skill.trim())
+      .filter(Boolean);
+
+    if (title.length < 4 || title.length > 180) {
+      setFormError("Nama proyek harus terdiri dari 4 sampai 180 karakter.");
+      return;
+    }
+    if (description.length < 30 || description.length > 15000) {
+      setFormError("Deskripsi proyek harus terdiri dari 30 sampai 15.000 karakter.");
+      return;
+    }
+    if (skillsRequired.length === 0 || skillsRequired.length > 30) {
+      setFormError("Masukkan 1 sampai 30 skill, pisahkan dengan tanda koma.");
+      return;
+    }
+    if (skillsRequired.some((skill) => skill.length > 100)) {
+      setFormError("Setiap skill maksimal 100 karakter.");
+      return;
+    }
+    let durationWeeks: number;
+    try {
+      durationWeeks = durationInWeeks(formData.duration);
+    } catch {
+      setFormError("Masukkan durasi dalam minggu atau bulan, contohnya 4 Minggu.");
+      return;
+    }
+    if (durationWeeks < 1 || durationWeeks > 104) {
+      setFormError("Durasi proyek harus antara 1 minggu dan 104 minggu.");
+      return;
+    }
+    if (formData.stipend.trim().length > 180) {
+      setFormError("Insentif atau kompensasi maksimal 180 karakter.");
       return;
     }
 
-    addProject({
-      title: formData.title.trim(),
-      company: companyName,
-      companyId: currentUser?.id,
-      category: formData.category,
-      description: formData.description.trim(),
-      skillsRequired: formData.skillsRequired
-        .split(",")
-        .map((skill) => skill.trim())
-        .filter(Boolean),
-      duration: formData.duration.trim(),
-      location: formData.location,
-      stipend: formData.stipend.trim() || "Tidak disebutkan",
-    });
+    setIsSubmittingProject(true);
+    try {
+      await addProject({
+        title,
+        company: companyName,
+        companyId: currentUser?.id,
+        category: formData.category,
+        description,
+        skillsRequired,
+        duration: formData.duration.trim(),
+        durationWeeks,
+        location: formData.location,
+        stipend: formData.stipend.trim() || "Tidak disebutkan",
+      });
 
-    setFormData({
-      title: "",
-      category: "Technology",
-      description: "",
-      skillsRequired: "",
-      duration: "",
-      location: "Remote",
-      stipend: "",
-    });
-
-    setShowAddProject(false);
-    alert("Proyek berhasil ditambahkan dan menunggu persetujuan admin.");
+      setFormData({
+        title: "",
+        category: "Technology",
+        description: "",
+        skillsRequired: "",
+        duration: "",
+        location: "Remote",
+        stipend: "",
+      });
+      setShowAddProject(false);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Proyek gagal dikirim.");
+    } finally {
+      setIsSubmittingProject(false);
+    }
   };
 
   const handleOpenApplicant = (applicationId: string) => {
@@ -682,6 +718,7 @@ const CompanyDashboard: React.FC = () => {
             </div>
 
             <form onSubmit={handleAddProject} className="p-6 space-y-5">
+              {formError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{formError}</p>}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Nama Proyek *
@@ -694,8 +731,11 @@ const CompanyDashboard: React.FC = () => {
                   onChange={handleInputChange}
                   placeholder="Contoh: Social Media Campaign"
                   required
+                  minLength={4}
+                  maxLength={180}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                <p className="mt-2 text-xs text-gray-400">Nama proyek harus terdiri dari 4 sampai 180 karakter.</p>
               </div>
 
               <div>
@@ -707,6 +747,7 @@ const CompanyDashboard: React.FC = () => {
                   name="category"
                   value={formData.category}
                   onChange={handleInputChange}
+                  required
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="Technology">Technology</option>
@@ -734,8 +775,13 @@ const CompanyDashboard: React.FC = () => {
                   placeholder="Jelaskan tujuan, tugas, dan tanggung jawab proyek..."
                   rows={4}
                   required
+                  minLength={30}
+                  maxLength={15000}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
+                <p className="mt-2 text-xs text-gray-400">
+                  Minimal 30 karakter agar tujuan, tugas, dan tanggung jawab proyek jelas. {formData.description.trim().length}/30.
+                </p>
               </div>
 
               <div>
@@ -750,11 +796,12 @@ const CompanyDashboard: React.FC = () => {
                   onChange={handleInputChange}
                   placeholder="Contoh: Canva, Figma, Copywriting"
                   required
+                  aria-describedby="project-skills-hint"
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
 
-                <p className="text-xs text-gray-400 mt-2">
-                  Pisahkan setiap skill menggunakan tanda koma.
+                <p id="project-skills-hint" className="text-xs text-gray-400 mt-2">
+                  Pisahkan setiap skill menggunakan tanda koma. Maksimal 30 skill dan 100 karakter per skill.
                 </p>
               </div>
 
@@ -770,8 +817,11 @@ const CompanyDashboard: React.FC = () => {
                     value={formData.duration}
                     onChange={handleInputChange}
                     placeholder="Contoh: 4 Minggu"
+                    required
+                    aria-describedby="project-duration-hint"
                     className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                  <p id="project-duration-hint" className="mt-2 text-xs text-gray-400">Masukkan durasi 1 sampai 104 minggu, atau dalam bulan.</p>
                 </div>
 
                 <div>
@@ -783,6 +833,7 @@ const CompanyDashboard: React.FC = () => {
                     name="location"
                     value={formData.location}
                     onChange={handleInputChange}
+                    required
                     className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="Remote">Remote</option>
@@ -803,6 +854,7 @@ const CompanyDashboard: React.FC = () => {
                   value={formData.stipend}
                   onChange={handleInputChange}
                   placeholder="Contoh: Rp500.000 atau Sertifikat"
+                  maxLength={180}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -818,10 +870,11 @@ const CompanyDashboard: React.FC = () => {
 
                 <button
                   type="submit"
-                  className="px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 inline-flex items-center justify-center gap-2"
+                  disabled={isSubmittingProject}
+                  className="px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 inline-flex items-center justify-center gap-2 disabled:opacity-60"
                 >
                   <Plus size={18} />
-                  Simpan Proyek
+                  {isSubmittingProject ? "Mengirim..." : "Simpan Proyek"}
                 </button>
               </div>
             </form>
