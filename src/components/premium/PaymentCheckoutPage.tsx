@@ -7,6 +7,41 @@ interface PaymentCheckoutPageProps {
   isSuccessView?: boolean;
 }
 
+interface MidtransSnap {
+  pay: (
+    token: string,
+    callbacks?: {
+      onSuccess?: () => void;
+      onPending?: () => void;
+      onError?: () => void;
+      onClose?: () => void;
+    }
+  ) => void;
+}
+
+declare global {
+  interface Window {
+    snap?: MidtransSnap;
+  }
+}
+
+function loadMidtransSnap(url: string): Promise<MidtransSnap> {
+  if (window.snap) return Promise.resolve(window.snap);
+
+  return new Promise((resolve, reject) => {
+    const existingScript = document.querySelector<HTMLScriptElement>(`script[src="${url}"]`);
+    const script = existingScript ?? document.createElement("script");
+    script.src = url;
+    script.async = true;
+    script.onload = () => {
+      if (window.snap) resolve(window.snap);
+      else reject(new Error("Midtrans Snap could not be initialized."));
+    };
+    script.onerror = () => reject(new Error("Midtrans Snap could not be loaded."));
+    if (!existingScript) document.head.appendChild(script);
+  });
+}
+
 export const PaymentCheckoutPage: React.FC<PaymentCheckoutPageProps> = ({ isSuccessView = false }) => {
   const {
     currentUser,
@@ -20,6 +55,9 @@ export const PaymentCheckoutPage: React.FC<PaymentCheckoutPageProps> = ({ isSucc
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [amount, setAmount] = useState<number | null>(null);
   const [serverStatus, setServerStatus] = useState<"pending" | "verified" | "rejected" | null>(null);
+  const [midtransToken, setMidtransToken] = useState<string | null>(null);
+  const [midtransSnapUrl, setMidtransSnapUrl] = useState<string | null>(null);
+  const [isMidtransPayment, setIsMidtransPayment] = useState(isSuccessView);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -27,22 +65,120 @@ export const PaymentCheckoutPage: React.FC<PaymentCheckoutPageProps> = ({ isSucc
     ? latestTransaction.status
     : serverStatus;
 
+  const redirectToSuccess = (orderId: string) => {
+    const query = new URLSearchParams({ order_id: orderId });
+    window.history.pushState(null, "", `/payment/success?${query.toString()}`);
+    setCurrentView("payment_success");
+  };
+
   useEffect(() => {
-    if (pendingPaymentPlan) return;
+    if (pendingPaymentPlan && !isSuccessView) return;
     let active = true;
-    void apiRequest<{ transactions: Array<{ id: string; amount: number; status: "pending" | "verified" | "rejected" }> }>("/transactions/mine")
+    const orderId = isSuccessView
+      ? new URLSearchParams(window.location.search).get("order_id")
+      : null;
+    if (isSuccessView && !orderId) {
+      setError("The payment return did not include a transaction reference.");
+      return;
+    }
+    const query = orderId ? `?order_id=${encodeURIComponent(orderId)}` : "";
+    void apiRequest<{ transactions: Array<{ id: string; amount: number; status: "pending" | "verified" | "rejected" }> }>(`/transactions/mine${query}`)
       .then(({ transactions }) => {
         const latest = transactions[0];
         if (!active || !latest) return;
         setTransactionId(latest.id);
         setAmount(latest.amount);
         setServerStatus(latest.status);
+        if (isSuccessView) setIsMidtransPayment(true);
       })
       .catch((requestError: unknown) => {
         if (active) setError(requestError instanceof Error ? requestError.message : "Unable to load payment status.");
       });
     return () => { active = false; };
-  }, [pendingPaymentPlan]);
+  }, [pendingPaymentPlan, isSuccessView]);
+
+  useEffect(() => {
+    if ((!isMidtransPayment && !isSuccessView) || !transactionId) return;
+
+    let attempts = 0;
+    let interval: ReturnType<typeof setInterval>;
+    const refreshStatus = async () => {
+      try {
+        const { transactions } = await apiRequest<{
+          transactions: Array<{ id: string; status: "pending" | "verified" | "rejected" }>;
+        }>(`/transactions/mine?order_id=${encodeURIComponent(transactionId)}`);
+        const transaction = transactions.find((item) => item.id === transactionId);
+        if (transaction) {
+          setServerStatus(transaction.status);
+          if (transaction.status !== "pending") {
+            clearInterval(interval);
+            if (transaction.status === "verified" && !isSuccessView) {
+              redirectToSuccess(transactionId);
+            }
+          }
+        }
+      } catch (requestError) {
+        setError(requestError instanceof Error ? requestError.message : "Unable to refresh payment status.");
+      }
+    };
+
+    interval = setInterval(() => {
+      attempts += 1;
+      if (attempts >= 20) clearInterval(interval);
+      else void refreshStatus();
+    }, 3000);
+    void refreshStatus();
+    return () => clearInterval(interval);
+  }, [isMidtransPayment, isSuccessView, transactionId]);
+
+  const startMidtransPayment = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const checkout = await apiRequest<{
+        token: string;
+        orderId: string;
+        amount: number;
+        snapJsUrl: string;
+      }>("/payments/midtrans/token", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "student_premium" }),
+      });
+      setTransactionId(checkout.orderId);
+      setAmount(checkout.amount);
+      setServerStatus("pending");
+      setMidtransToken(checkout.token);
+      setMidtransSnapUrl(checkout.snapJsUrl);
+      setIsMidtransPayment(true);
+
+      const snap = await loadMidtransSnap(checkout.snapJsUrl);
+      snap.pay(checkout.token, {
+        onError: () => setError("Midtrans could not process this payment. Try opening checkout again."),
+      });
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to start Midtrans checkout.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reopenMidtransPayment = async () => {
+    if (!midtransToken || !midtransSnapUrl) return;
+    setError("");
+    setLoading(true);
+    try {
+      const snap = await loadMidtransSnap(midtransSnapUrl);
+      snap.pay(midtransToken, {
+        onError: () => setError("Midtrans could not process this payment. Try opening checkout again."),
+      });
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to reopen Midtrans checkout.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -82,6 +218,20 @@ export const PaymentCheckoutPage: React.FC<PaymentCheckoutPageProps> = ({ isSucc
         maximumFractionDigits: 0,
       }).format(amount);
 
+  if (isSuccessView && !transactionId) {
+    return (
+      <main className="flex min-h-[70vh] items-center justify-center bg-slate-50 px-4 py-10">
+        <section className="w-full max-w-lg space-y-4 rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-lg">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-700">
+            <Clock3 size={30} />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">Confirming your payment</h1>
+          <p className="text-sm text-slate-600">{error || "Checking the payment status with InternSpace…"}</p>
+        </section>
+      </main>
+    );
+  }
+
   if (transactionId && formattedAmount) {
     return (
       <main className="flex min-h-[70vh] items-center justify-center bg-slate-50 px-4 py-10">
@@ -91,17 +241,17 @@ export const PaymentCheckoutPage: React.FC<PaymentCheckoutPageProps> = ({ isSucc
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-blue-700">
-              {transactionStatus === "verified" ? "Payment verified" : transactionStatus === "rejected" ? "Payment proof rejected" : "Payment submitted"}
+              {transactionStatus === "verified" ? "Payment verified" : transactionStatus === "rejected" ? (isMidtransPayment ? "Payment failed" : "Payment proof rejected") : (isMidtransPayment ? "Midtrans payment" : "Payment submitted")}
             </p>
             <h1 className="mt-2 text-2xl font-bold text-slate-900">
-              {transactionStatus === "verified" ? "Premium is active" : transactionStatus === "rejected" ? "Submit a new payment proof" : "Awaiting admin verification"}
+              {transactionStatus === "verified" ? "Premium is active" : transactionStatus === "rejected" ? (isMidtransPayment ? "Payment was not completed" : "Submit a new payment proof") : (isMidtransPayment ? "Awaiting payment confirmation" : "Awaiting admin verification")}
             </h1>
             <p className="mt-2 text-sm text-slate-600">
               {transactionStatus === "verified"
                 ? "Your premium subscription has been activated."
                 : transactionStatus === "rejected"
-                  ? "An administrator rejected this proof. Review the instructions and submit a new proof."
-                  : "Your payment proof was received. Premium access starts only after an administrator verifies it."}
+                  ? (isMidtransPayment ? "The payment was declined or expired. Start a new checkout to try again." : "An administrator rejected this proof. Review the instructions and submit a new proof.")
+                  : (isMidtransPayment ? "Premium access will activate after Midtrans confirms the payment through its notification." : "Your payment proof was received. Premium access starts only after an administrator verifies it.")}
             </p>
           </div>
           <div className="rounded-2xl bg-slate-50 p-5 text-left text-sm">
@@ -114,9 +264,22 @@ export const PaymentCheckoutPage: React.FC<PaymentCheckoutPageProps> = ({ isSucc
               <span className="font-bold text-slate-900">{formattedAmount}</span>
             </div>
           </div>
-          <p className="text-xs leading-5 text-slate-500">
-            No payment gateway or bank account is configured here. Use payment instructions provided by InternSpace; do not send funds to details from this demo interface.
-          </p>
+          {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          {isMidtransPayment && transactionStatus === "pending" && midtransToken && midtransSnapUrl && (
+            <button type="button" disabled={loading} onClick={() => void reopenMidtransPayment()} className="w-full rounded-xl border border-blue-700 px-5 py-3 font-semibold text-blue-700 disabled:opacity-60">
+              {loading ? "Opening checkout…" : "Continue payment"}
+            </button>
+          )}
+          {isMidtransPayment && transactionStatus === "rejected" && (
+            <button type="button" onClick={() => setCurrentView("premium")} className="w-full rounded-xl border border-blue-700 px-5 py-3 font-semibold text-blue-700">
+              Choose a plan and try again
+            </button>
+          )}
+          {!isMidtransPayment && (
+            <p className="text-xs leading-5 text-slate-500">
+              Use only payment instructions provided by InternSpace; do not send funds to details from this demo interface.
+            </p>
+          )}
           <button
             type="button"
             onClick={() => setCurrentView(currentUser?.role === "company" ? "company_dashboard" : "student_dashboard")}
@@ -150,15 +313,30 @@ export const PaymentCheckoutPage: React.FC<PaymentCheckoutPageProps> = ({ isSucc
           <ArrowLeft size={16} /> Back to plans
         </button>
 
-        <header>
-          <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Manual payment review</p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-900">Submit payment proof</h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Your plan and price are validated by the server. Premium remains inactive until an administrator verifies the proof.
-          </p>
-        </header>
+        {pendingPaymentPlan.id === "student_premium" ? (
+          <section className="mx-auto max-w-lg space-y-5 rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Secure checkout with Midtrans</p>
+            <h1 className="text-2xl font-bold text-slate-900">Pay for Student Premium</h1>
+            <p className="text-sm leading-6 text-slate-600">
+              Midtrans will open a secure payment window. Premium activates after the payment notification is verified.
+            </p>
+            {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+            <button type="button" disabled={loading} onClick={() => void startMidtransPayment()} className="w-full rounded-xl bg-blue-700 px-5 py-3.5 text-sm font-bold text-white disabled:opacity-60">
+              {loading ? "Preparing checkout…" : "Pay with Midtrans"}
+            </button>
+            <p className="text-xs text-slate-500">{pendingPaymentPlan.name}</p>
+          </section>
+        ) : (
+          <>
+            <header>
+              <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Manual payment review</p>
+              <h1 className="mt-2 text-3xl font-bold text-slate-900">Submit payment proof</h1>
+              <p className="mt-2 text-sm text-slate-600">
+                Your plan and price are validated by the server. Premium remains inactive until an administrator verifies the proof.
+              </p>
+            </header>
 
-        <form onSubmit={submit} className="grid gap-6 lg:grid-cols-[1fr_280px]">
+            <form onSubmit={submit} className="grid gap-6 lg:grid-cols-[1fr_280px]">
           <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6">
             <fieldset>
               <legend className="text-sm font-bold text-slate-900">Payment method</legend>
@@ -216,7 +394,9 @@ export const PaymentCheckoutPage: React.FC<PaymentCheckoutPageProps> = ({ isSucc
               The final amount is returned from the server when the transaction is created.
             </p>
           </aside>
-        </form>
+            </form>
+          </>
+        )}
 
         {isSuccessView && !transactionId && (
           <p className="text-center text-sm text-slate-500">No verified payment is associated with this session.</p>

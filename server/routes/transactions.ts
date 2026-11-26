@@ -13,7 +13,7 @@ import { storeUpload, uploadFile } from "../uploads";
 
 export const transactionsRouter = Router();
 
-const plans = {
+export const plans = {
   student_premium: { role: "student", amount: 35000, label: "InternSpace Student Premium" },
   company_premium: { role: "company", amount: 400000, label: "InternSpace Company Premium" },
 } as const;
@@ -22,6 +22,10 @@ const createSchema = z.object({
   plan: z.enum(["student_premium", "company_premium"]),
   method: z.enum(["bank_transfer", "ewallet"]),
 }).strict();
+
+const mineQuerySchema = z.object({
+  order_id: z.string().uuid().optional(),
+});
 
 transactionsRouter.get("/plans", asyncRoute(async (_request, response) => {
   response.json({
@@ -131,10 +135,13 @@ transactionsRouter.get(
   requireAuth,
   asyncRoute(async (request: Request, response: Response) => {
     const user = getAuthenticatedUser(request);
+    const { order_id: orderId } = mineQuerySchema.parse(request.query);
+    const orderFilter = orderId ? "AND id = ?" : "";
     const transactions = await rows<TransactionRow[]>(
       `SELECT id, user_id, plan, amount, method, proof_file_id, status, created_at, verified_at
-       FROM transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 50`,
-      [user.id]
+       FROM transactions WHERE user_id = ? ${orderFilter}
+       ORDER BY created_at DESC LIMIT 50`,
+      orderId ? [user.id, orderId] : [user.id]
     );
     response.json({ transactions: transactions.map(mapTransaction) });
   })

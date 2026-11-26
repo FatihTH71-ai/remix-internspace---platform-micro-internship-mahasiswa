@@ -18,6 +18,36 @@ export class ApiError extends Error {
   }
 }
 
+const databaseConnectionErrorCodes = new Set([
+  "ER_ACCESS_DENIED_ERROR",
+  "ER_DBACCESS_DENIED_ERROR",
+  "ECONNREFUSED",
+  "ETIMEDOUT",
+  "PROTOCOL_CONNECTION_LOST",
+]);
+
+export function isDatabaseConnectionError(error: unknown): boolean {
+  return Boolean(
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    typeof error.code === "string" &&
+    databaseConnectionErrorCodes.has(error.code)
+  );
+}
+
+export function databaseConnectionErrorMessage(error: unknown): string {
+  if (
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    (error.code === "ER_ACCESS_DENIED_ERROR" || error.code === "ER_DBACCESS_DENIED_ERROR")
+  ) {
+    return "MySQL rejected the configured database account. Verify MYSQL_USER and MYSQL_PASSWORD, and grant this account access to MYSQL_DATABASE.";
+  }
+  return "The database connection failed. Check MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, and MYSQL_DATABASE in .env, then restart the API.";
+}
+
 export function asyncRoute(
   handler: (request: Request, response: Response, next: NextFunction) => Promise<void> | void
 ): RequestHandler {
@@ -56,6 +86,16 @@ export const errorHandler: ErrorRequestHandler = (error, _request, response, _ne
         message: error.code === "LIMIT_FILE_SIZE"
           ? "Files must be 5 MB or smaller."
           : "The uploaded file could not be accepted.",
+      },
+    });
+    return;
+  }
+
+  if (isDatabaseConnectionError(error)) {
+    response.status(503).json({
+      error: {
+        code: "DATABASE_UNAVAILABLE",
+        message: databaseConnectionErrorMessage(error),
       },
     });
     return;
